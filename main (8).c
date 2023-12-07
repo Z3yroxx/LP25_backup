@@ -22,26 +22,8 @@ int main(int argc, char *argv[]) {
         printf("2 arguments must be supplied: a source and a destination\n");
         return -1;
     }
-    
-    // - source exists and can be read
-    DIR *source;
-    source = opendir(argv[1]);
-    if (source == NULL) {
-        printf("Erreur lors de l'ouverture de la source : %s\n", argv[1]);
-        return -1;
-    }
-    closedir(source);
-    
+    // - source exists and can be read  
     // - destination exists and can be written OR doesn't exist but can be created
-    DIR *detination;
-    detination = opendir(argv[2]);
-    if (detination == NULL) {
-        printf("Erreur lors de l'ouverture de la destination : %s\n", argv[2]);
-        mkdir(argv[2], 0755);
-        printf("Le repertoire : %s (destintion), a été créé\n", argv[2]);
-        return -1;
-    }
-    closedir(destination);
     
     // - other options with getopt (see instructions)
     configuration_t my_config;
