@@ -62,4 +62,13 @@ bool directory_exists(char *path_to_dir) {
  * Hint: try to open a file in write mode in the target directory.
  */
 bool is_directory_writable(char *path_to_dir) {
+    struct stat destination;
+    if (stat(dirname, &destination) == -1) {
+        perror("Erreur");
+        return false;
+    }
+    if (destination & S_IWUSR) {
+        return true;
+    }
+    return false;
 }
