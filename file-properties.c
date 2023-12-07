@@ -44,6 +44,15 @@ int compute_file_md5(files_list_entry_t *entry) {
  * @return true if directory exists, false else
  */
 bool directory_exists(char *path_to_dir) {
+
+    DIR *directory;
+    directory = opendir(path_to_dir);
+    if (directory == NULL) {
+        printf("Erreur lors de l'ouverture de la source : %s\n", path_to_dir);
+        return false;
+    }
+    closedir(directory);
+    return true;
 }
 
 /*!
