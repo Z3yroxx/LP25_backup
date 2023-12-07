@@ -31,7 +31,16 @@ void synchronize(configuration_t *the_config, process_context_t *p_context) {
  * @return true if both files are not equal, false else
  */
 bool mismatch(files_list_entry_t *lhd, files_list_entry_t *rhd, bool has_md5) {
-  if (strcmp(lhd
+  if (strcmp(lhd->path_and_name, rhd->path_and_name) != 0){
+    return true;
+  if (lhd->size != rhd->size){
+    return true;
+  if (  mtimeeeeeeeeeee
+  if (has_md5){
+    if (memcmp(ldh->md5sum != ldh->md5sum, sizeof(uint8_t) * 16) != 0)){
+      return true;
+  }
+  
 }
 
 /*!
