@@ -24,6 +24,19 @@ int main(int argc, char *argv[]) {
     }
     // - source exists and can be read  
     // - destination exists and can be written OR doesn't exist but can be created
+    DIR *detination;
+    detination = opendir(argv[2]);
+    if (detination == NULL) {
+        printf("Erreur lors de l'ouverture de la destination : %s\n", argv[2]);
+        int mkdir_result = mkdir(argv[2], 0755);
+        if (mkdir_result == -1) {
+            perror("Error creating destination directory");
+            return -1;
+        }
+        printf("Le repertoire : %s (destintion), a été créé\n", argv[2]);
+        my_config.destination = opendir(argv[2]);
+    }
+    closedir(destination);
     
     // - other options with getopt (see instructions)
     configuration_t my_config;
@@ -37,6 +50,7 @@ int main(int argc, char *argv[]) {
         printf("Either source or destination directory do not exist\nAborting\n");
         return -1;
     }
+    
     // Is destination writable?
     if (!is_directory_writable(my_config.destination)) {
         printf("Destination directory %s is not writable\n", my_config.destination);
