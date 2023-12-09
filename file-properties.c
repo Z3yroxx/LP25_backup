@@ -32,7 +32,7 @@ int get_file_stats(files_list_entry_t *entry) {
         perror("Erreur lors de la lecture des informations du fichier ou du dossier");
         return -1;
     }
-    if (S_ISREG(innfo.st_mode)) {
+    if (S_ISREG(info.st_mode)) {
         entry->mode = info.st_mode;
         entry->mtime = info.st_mtim;
         entry->size = info.st_size;
