@@ -27,6 +27,28 @@
  * @return -1 in case of error, 0 else
  */
 int get_file_stats(files_list_entry_t *entry) {
+    struct stat info;
+    if (stat(entry->path_and_name, &info) == -1) {
+        perror("Erreur lors de la lecture des informations du fichier ou du dossier");
+        return -1;
+    }
+    if (S_ISREG(innfo.st_mode)) {
+        entry->mode = info.st_mode;
+        entry->mtime = info.st_mtim;
+        entry->size = info.st_size;
+        entry->entry_type = FICHIER;
+        //MD5 sum ?????????
+        return 0;
+        
+    } else if (S_ISDIR(info.st_mode)) {
+        entry->mode = info.st_mode;
+        entry->entry_type = DOSSIER;
+        return 0;
+        
+    } else {
+        return -1;
+    }
+    
 }
 
 /*!
