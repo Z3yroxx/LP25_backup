@@ -48,7 +48,7 @@ bool directory_exists(char *path_to_dir) {
     DIR *directory;
     directory = opendir(path_to_dir);
     if (directory == NULL) {
-        printf("Erreur lors de l'ouverture de la source : %s\n", path_to_dir);
+        printf("Erreur lors de l'ouverture du repertoire : %s\n", path_to_dir);
         return false;
     }
     closedir(directory);
@@ -62,13 +62,8 @@ bool directory_exists(char *path_to_dir) {
  * Hint: try to open a file in write mode in the target directory.
  */
 bool is_directory_writable(char *path_to_dir) {
-    struct stat destination;
-    if (stat(dirname, &destination) == -1) {
-        perror("Erreur");
+    if (access(path_to_dir, W_OK) != 0) {
+        perror("Erreur : le répertoire de destination ne peut pas être modifié");
         return false;
     }
-    if (destination & S_IWUSR) {
-        return true;
-    }
-    return false;
-}
+    return true;
