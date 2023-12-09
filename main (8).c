@@ -19,7 +19,7 @@ int main(int argc, char *argv[]) {
     // Check parameters:
     // - source and destination are provided
     if (argc != 3){
-        printf("2 arguments must be supplied: a source and a destination\n");
+        printf("il faut fournir 2 arguments : une source et une destination\n");
         return -1;
     }
     // - source exists and can be read  
@@ -30,7 +30,7 @@ int main(int argc, char *argv[]) {
         printf("Erreur lors de l'ouverture de la destination : %s\n", argv[2]);
         int mkdir_result = mkdir(argv[2], 0755);
         if (mkdir_result == -1) {
-            perror("Error creating destination directory");
+            perror("Erreur lors de la création de la destination");
             return -1;
         }
         printf("Le repertoire : %s (destintion), a été créé\n", argv[2]);
