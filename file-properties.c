@@ -58,6 +58,30 @@ int get_file_stats(files_list_entry_t *entry) {
  * Use libcrypto functions from openssl/evp.h
  */
 int compute_file_md5(files_list_entry_t *entry) {
+    FILE *file;
+    unsigned char buffer[MD5_DIGEST_LENGTH];
+    size_t bytesRead;
+    unsigned char data[1024];
+    MD5_CTX md5Context;
+
+    file = fopen(entry->path_and_name, "rb");
+    if (file == NULL) {
+        perror("Erreur");
+        return -1;
+    }
+
+    MD5_Init(&md5Context);
+
+    while ((bytesRead = fread(data, 1, sizeof(data), file)) != 0) {
+        MD5_Update(&md5Context, data, bytesRead);
+    }
+
+    MD5_Final(buffer, &md5Context);
+
+    fclose(file);
+    memcpy(entry->md5sum, buffer, MD5_DIGEST_LENGTH);
+
+    return 0;
 }
 
 /*!
