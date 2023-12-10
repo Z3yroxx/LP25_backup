@@ -175,6 +175,9 @@ void make_list(files_list_t *list, char *target) {
 DIR *open_dir(char *path) {
   if (!directory_exists(path)) {
       return NULL;
+  } else {
+      DIR *dir = opendir(path);
+      return dir;
   }
 }
 
