@@ -83,7 +83,7 @@ bool mismatch(files_list_entry_t *lhd, files_list_entry_t *rhd, bool has_md5) {
  * @param target_path is the path whose files to list
  */
 void make_files_list(files_list_t *list, char *target_path) {
-  // Appel de la fonction pour construire la liste de fichiers de manière séquentielle
+  // Appel de la fonction pour construire la liste de fichiers
   make_list(list, target_path);
 }
 
@@ -95,8 +95,7 @@ void make_files_list(files_list_t *list, char *target_path) {
  * @param msg_queue is the id of the MQ used for communication
  */
 void make_files_lists_parallel(files_list_t *src_list, files_list_t *dst_list, configuration_t *the_config, int msg_queue) {
-  // À implémenter - fonction pour construire les listes en parallèle
-  // Cette fonction pourrait utiliser des threads ou d'autres mécanismes de parallélisation
+  // à faire pour la partie II du projet : intégration des processus et du mode en parallèle 
 }
 
 /*!
