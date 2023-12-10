@@ -98,11 +98,9 @@ void copy_entry_to_destination(files_list_entry_t *source_entry, configuration_t
   char source_path[4096];
   char destination_path[4096];
 
-  // Construire les chemins complets pour la source et la destination
   snprintf(source_path, sizeof(source_path), "%s/%s", the_config->source, source_entry->path_and_name);
   snprintf(destination_path, sizeof(destination_path), "%s/%s", the_config->destination, source_entry->path_and_name);
 
-  // Si c'est un dossier, créer le dossier destination
   if (source_entry->entry_type == DOSSIER) {
       if (mkdir(destination_path, 0777) != 0 && errno != EEXIST) {
           perror("Erreur lors de la création du répertoire destination");
@@ -111,7 +109,6 @@ void copy_entry_to_destination(files_list_entry_t *source_entry, configuration_t
       return;
   }
 
-  // Ouvrir les fichiers source et destination
   int source_fd = open(source_path, O_RDONLY);
   int destination_fd = open(destination_path, O_WRONLY | O_CREAT | O_TRUNC, 0777);
 
@@ -122,7 +119,6 @@ void copy_entry_to_destination(files_list_entry_t *source_entry, configuration_t
       return;
   }
 
-  // Copier le contenu du fichier source vers le fichier destination
   struct stat source_stat;
   fstat(source_fd, &source_stat);
 
@@ -135,11 +131,9 @@ void copy_entry_to_destination(files_list_entry_t *source_entry, configuration_t
       return;
   }
 
-  // Fermer les fichiers source et destination
   close(source_fd);
   close(destination_fd);
 
-  // Mettre à jour l'horodatage (mtime) du fichier destination
   struct timespec times[2] = {source_stat.st_atim, source_stat.st_mtim};
   utimensat(AT_FDCWD, destination_path, times, 0);
 }
@@ -160,8 +154,8 @@ void make_list(files_list_t *list, char *target) {
       snprintf(file_path, sizeof(file_path), "%s/%s", target, entry->d_name);
       add_file_entry(list, file_path);
 
-      if (entry->d_type == DT_DIR) { // Si c'est un répertoire
-          make_list(list, file_path); // Appel récursif pour lister les fichiers dans le sous-répertoire
+      if (entry->d_type == DT_DIR) { 
+          make_list(list, file_path); 
       }
   }
 
