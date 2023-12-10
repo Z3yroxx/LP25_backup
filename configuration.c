@@ -44,7 +44,55 @@ void init_configuration(configuration_t *the_config) {
  * @return -1 if configuration cannot succeed, 0 when ok
  */
 int set_configuration(configuration_t *the_config, int argc, char *argv[]) {
-    strcpy(the_config->source, argv[1]);
-    strcpy(the_config->destination, argv[2]);
-    //...
+    
+     if (the_config == NULL || argc < 3) {
+        return -1;  // Paramètres invalides
+    }
+
+    // Initialiser la configuration avec des valeurs par défaut
+    init_configuration(the_config);
+
+    int option;
+    const char *short_options = "n:hvd";
+    const struct option long_options[] = {
+            {"date_size_only", no_argument, NULL, 'x'},
+            {"no-parallel", no_argument, NULL, 'y'},
+            {"dry-run", no_argument, NULL, 'd'},
+            {"verbose", no_argument, NULL, 'v'},
+            {NULL, 0, NULL, 0}};
+
+    while ((option = getopt_long(argc, argv, short_options, long_options, NULL)) != -1) {
+        switch (option) {
+            case 'n':
+                the_config->processes_count = (uint8_t)atoi(optarg);
+                break;
+            case 'h':
+                display_help(argv[0]);
+                return -1; // Terminer le programme après affichage de l'aide
+            case 'x':
+                the_config->uses_md5 = false;
+                break;
+            case 'y':
+                the_config->is_parallel = false;
+                the_config->processes_count = 1; // Réinitialiser le nombre de processus
+                break;
+            case 'd':
+                the_config->is_dry_run = true;
+                break;
+            case 'v':
+                the_config->is_verbose = true;
+                break;
+            default:
+                return -1; // Option non reconnue
+        }
+    }
+
+    // Mettre à jour les champs source et destination
+    strncpy(the_config->source, argv[optind], sizeof(the_config->source) - 1);
+    the_config->source[sizeof(the_config->source) - 1] = '\0';
+
+    strncpy(the_config->destination, argv[optind + 1], sizeof(the_config->destination) - 1);
+    the_config->destination[sizeof(the_config->destination) - 1] = '\0';
+
+    return 0; // Succès
 }
