@@ -41,8 +41,9 @@ void synchronize(configuration_t *the_config, process_context_t *p_context) {
       copy_entry_to_destination(diff_entry, the_config);
       diff_entry = diff_entry->next;
   }
-
-  
+  clear_files_list(&src_list);
+  clear_files_list(&dst_list);
+  clear_files_list(&diff_list);
 }
 
 /*!
