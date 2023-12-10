@@ -10,7 +10,6 @@
 #include <sys/sendfile.h>
 #include <unistd.h>
 #include <sys/msg.h>
-
 #include <stdio.h>
 
 /*!
@@ -21,6 +20,7 @@
  * @param p_context is a pointer to the processes context
  */
 void synchronize(configuration_t *the_config, process_context_t *p_context) {
+  
 }
 
 /*!
