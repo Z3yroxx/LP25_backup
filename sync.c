@@ -65,7 +65,7 @@ bool mismatch(files_list_entry_t *lhd, files_list_entry_t *rhd, bool has_md5) {
     if (memcmp(ldh->md5sum != ldh->md5sum, sizeof(uint8_t) * 16) != 0)){
       return true;
   }
-  
+  return false;
 }
 
 /*!
@@ -94,6 +94,53 @@ void make_files_lists_parallel(files_list_t *src_list, files_list_t *dst_list, c
  * Use sendfile to copy the file, mkdir to create the directory
  */
 void copy_entry_to_destination(files_list_entry_t *source_entry, configuration_t *the_config) {
+  char source_path[4096];
+  char destination_path[4096];
+
+  // Construire les chemins complets pour la source et la destination
+  snprintf(source_path, sizeof(source_path), "%s/%s", the_config->source, source_entry->path_and_name);
+  snprintf(destination_path, sizeof(destination_path), "%s/%s", the_config->destination, source_entry->path_and_name);
+
+  // Si c'est un dossier, créer le dossier destination
+  if (source_entry->entry_type == DOSSIER) {
+      if (mkdir(destination_path, 0777) != 0 && errno != EEXIST) {
+          perror("Erreur lors de la création du répertoire destination");
+          return;
+      }
+      return;
+  }
+
+  // Ouvrir les fichiers source et destination
+  int source_fd = open(source_path, O_RDONLY);
+  int destination_fd = open(destination_path, O_WRONLY | O_CREAT | O_TRUNC, 0777);
+
+  if (source_fd == -1 || destination_fd == -1) {
+      perror("Erreur lors de l'ouverture des fichiers");
+      if (source_fd != -1) close(source_fd);
+      if (destination_fd != -1) close(destination_fd);
+      return;
+  }
+
+  // Copier le contenu du fichier source vers le fichier destination
+  struct stat source_stat;
+  fstat(source_fd, &source_stat);
+
+  off_t offset = 0;
+  ssize_t bytes_copied = sendfile(destination_fd, source_fd, &offset, source_stat.st_size);
+  if (bytes_copied == -1) {
+      perror("Erreur lors de la copie du fichier");
+      close(source_fd);
+      close(destination_fd);
+      return;
+  }
+
+  // Fermer les fichiers source et destination
+  close(source_fd);
+  close(destination_fd);
+
+  // Mettre à jour l'horodatage (mtime) du fichier destination
+  struct timespec times[2] = {source_stat.st_atim, source_stat.st_mtim};
+  utimensat(AT_FDCWD, destination_path, times, 0);
 }
 
 /*!
@@ -128,8 +175,6 @@ void make_list(files_list_t *list, char *target) {
 DIR *open_dir(char *path) {
   if (!directory_exists(path)) {
       return NULL;
-  } else {
-  return dir;
   }
 }
 
