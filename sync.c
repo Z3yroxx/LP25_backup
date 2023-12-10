@@ -84,15 +84,13 @@ void make_list(files_list_t *list, char *target) {
   DIR *dir = open_dir(target_path);
 
   struct dirent *entry;
-  while ((entry = readdir(dir)) != NULL) {
-      if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0) {
-          char file_path[4096];
-          snprintf(file_path, sizeof(file_path), "%s/%s", target, entry->d_name);
-          add_file_entry(list, file_path);
+  while ((entry = get_next_entry(dir)) != NULL) {
+      char file_path[4096];
+      snprintf(file_path, sizeof(file_path), "%s/%s", target, entry->d_name);
+      add_file_entry(list, file_path);
 
-          if (entry->d_type == DT_DIR) { // Si c'est un répertoire
-              make_list(list, file_path); // Appel récursif pour lister les fichiers dans le sous-répertoire
-          }
+      if (entry->d_type == DT_DIR) { // Si c'est un répertoire
+          make_list(list, file_path); // Appel récursif pour lister les fichiers dans le sous-répertoire
       }
   }
 
@@ -105,5 +103,17 @@ void make_list(files_list_t *list, char *target) {
  * @return a struct dirent pointer to the next relevant entry, NULL if none found (use it to stop iterating)
  * Relevant entries are all regular files and dir, except . and ..
  */
+#include <dirent.h>
+
 struct dirent *get_next_entry(DIR *dir) {
+  
+  struct dirent *entry;
+  while ((entry = readdir(dir)) != NULL) {
+      if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0) {
+          if (entry->d_type == DT_REG || entry->d_type == DT_DIR) {
+              return entry; // 
+          }
+      }
+  }
+  return NULL; 
 }
