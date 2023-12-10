@@ -44,4 +44,7 @@ void init_configuration(configuration_t *the_config) {
  * @return -1 if configuration cannot succeed, 0 when ok
  */
 int set_configuration(configuration_t *the_config, int argc, char *argv[]) {
+    strcpy(the_config->source, argv[1]);
+    strcpy(the_config->destination, argv[2]);
+    //...
 }
