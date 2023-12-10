@@ -29,7 +29,7 @@
 int get_file_stats(files_list_entry_t *entry) {
     struct stat info;
     if (stat(entry->path_and_name, &info) == -1) {
-        perror("Erreur lors de la lecture des informations du fichier ou du dossier");
+        printf("Erreur lors de la lecture des informations du fichier ou du dossier");
         return -1;
     }
     if (S_ISREG(info.st_mode)) {
@@ -37,7 +37,10 @@ int get_file_stats(files_list_entry_t *entry) {
         entry->mtime = info.st_mtim;
         entry->size = info.st_size;
         entry->entry_type = FICHIER;
-        //MD5 sum ?????????
+
+        if (compute_file_md5(entry) == -1) {
+            return -1;
+        }
         return 0;
         
     } else if (S_ISDIR(info.st_mode)) {
@@ -109,7 +112,7 @@ bool directory_exists(char *path_to_dir) {
  */
 bool is_directory_writable(char *path_to_dir) {
     if (access(path_to_dir, W_OK) != 0) {
-        perror("Erreur : le répertoire de destination ne peut pas être modifié");
+        printf("Erreur : le répertoire de destination ne peut pas être modifié");
         return false;
     }
     return true;
