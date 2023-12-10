@@ -12,8 +12,6 @@
 #include <sys/msg.h>
 #include <stdio.h>
 
-// ... (Déclarations de structures et autres dépendances)
-
 /*!
  * @brief La fonction synchronize est la fonction principale de synchronisation.
  * Elle construit les listes (source et destination), puis crée une troisième liste avec les différences, et applique ces différences à la destination.
