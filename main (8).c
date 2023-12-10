@@ -18,23 +18,23 @@
 int main(int argc, char *argv[]) {
     // Check parameters:
     // - source and destination are provided
-    if (argc != 3){
-        printf("il faut fournir 2 arguments : une source et une destination\n");
+    if (argc != 4){
+        printf("il faut fournir 3 arguments : une option, une source et une destination\n");
         return -1;
     }
     // - source exists and can be read  
     // - destination exists and can be written OR doesn't exist but can be created
     DIR *destination;
-    destination = opendir(argv[2]);
+    destination = opendir(argv[3]);
     if (destination == NULL) {
-        printf("Erreur lors de l'ouverture de la destination : %s\n", argv[2]);
-        int mkdir_result = mkdir(argv[2], 0755);
+        printf("Erreur lors de l'ouverture de la destination : %s\n", argv[3]);
+        int mkdir_result = mkdir(argv[3], 0755);
         if (mkdir_result == -1) {
             perror("Erreur lors de la création de la destination");
             return -1;
         }
-        printf("Le repertoire : %s (destintion), a été créé\n", argv[2]);
-        my_config.destination = opendir(argv[2]);
+        printf("Le repertoire : %s (destintion), a été créé\n", argv[3]);
+        my_config.destination = opendir(argv[3]);
     }
     closedir(destination);
     
