@@ -27,6 +27,13 @@ void display_help(char *my_name) {
  * @param the_config is a pointer to the configuration to be initialized
  */
 void init_configuration(configuration_t *the_config) {
+    strcpy(the_config->source, "src_default");
+    strcpy(the_config->destination, "dst_default");
+    the_config->processes_count = 1;
+    the_config->is_parallel = false;
+    the_config->uses_md5 = false;
+    the_config->is_verbose = false;
+    the_config->is_dry_run = false;
 }
 
 /*!
