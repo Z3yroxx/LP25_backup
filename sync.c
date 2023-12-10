@@ -13,11 +13,11 @@
 #include <stdio.h>
 
 /*!
- * @brief La fonction synchronize est la fonction principale de synchronisation.
- * Elle construit les listes (source et destination), puis crée une troisième liste avec les différences, et applique ces différences à la destination.
- * Elle doit s'adapter à l'opération parallèle ou non du programme.
- * @param the_config est un pointeur vers la configuration
- * @param p_context est un pointeur vers le contexte des processus
+ * @brief synchronize is the main function for synchronization
+ * It will build the lists (source and destination), then make a third list with differences, and apply differences to the destination
+ * It must adapt to the parallel or not operation of the program.
+ * @param the_config is a pointer to the configuration
+ * @param p_context is a pointer to the processes context
  */
 void synchronize(configuration_t *the_config, process_context_t *p_context) {
   // Initialisation des listes
@@ -53,11 +53,11 @@ void synchronize(configuration_t *the_config, process_context_t *p_context) {
 }
 
 /*!
- * @brief La fonction mismatch teste si deux fichiers avec le même nom (un dans la source, un dans la destination) sont égaux.
- * @param lhd est une entrée de liste de fichiers provenant de la source
- * @param rhd est une entrée de liste de fichiers provenant de la destination
- * @has_md5 est une valeur pour activer ou désactiver la vérification de la somme de contrôle MD5
- * @return vrai si les deux fichiers ne sont pas égaux, faux sinon
+ * @brief mismatch tests if two files with the same name (one in source, one in destination) are equal
+ * @param lhd a files list entry from the source
+ * @param rhd a files list entry from the destination
+ * @has_md5 a value to enable or disable MD5 sum check
+ * @return true if both files are not equal, false else
  */
 bool mismatch(files_list_entry_t *lhd, files_list_entry_t *rhd, bool has_md5) {
   // Comparaison des attributs des fichiers
@@ -78,9 +78,9 @@ bool mismatch(files_list_entry_t *lhd, files_list_entry_t *rhd, bool has_md5) {
 }
 
 /*!
- * @brief La fonction make_files_list construit une liste de fichiers en mode non-parallèle.
- * @param list est un pointeur vers la liste qui sera construite
- * @param target_path est le chemin dont les fichiers doivent être listés
+ * @brief make_files_list buils a files list in no parallel mode
+ * @param list is a pointer to the list that will be built
+ * @param target_path is the path whose files to list
  */
 void make_files_list(files_list_t *list, char *target_path) {
   // Appel de la fonction pour construire la liste de fichiers de manière séquentielle
@@ -88,11 +88,11 @@ void make_files_list(files_list_t *list, char *target_path) {
 }
 
 /*!
- * @brief La fonction make_files_lists_parallel crée les listes de fichiers source et destination avec un traitement parallèle.
- * @param src_list est un pointeur vers la liste source à construire
- * @param dst_list est un pointeur vers la liste de destination à construire
- * @param the_config est un pointeur vers la configuration du programme
- * @param msg_queue est l'identifiant de la MQ utilisée pour la communication
+ * @brief make_files_lists_parallel makes both (src and dest) files list with parallel processing
+ * @param src_list is a pointer to the source list to build
+ * @param dst_list is a pointer to the destination list to build
+ * @param the_config is a pointer to the program configuration
+ * @param msg_queue is the id of the MQ used for communication
  */
 void make_files_lists_parallel(files_list_t *src_list, files_list_t *dst_list, configuration_t *the_config, int msg_queue) {
   // À implémenter - fonction pour construire les listes en parallèle
@@ -100,10 +100,10 @@ void make_files_lists_parallel(files_list_t *src_list, files_list_t *dst_list, c
 }
 
 /*!
- * @brief La fonction copy_entry_to_destination copie un fichier de la source vers la destination.
- * Elle conserve les modes d'accès et mtime (@voir utimensat)
- * Attention au chemin pour éviter que les préfixes ne se répètent de la source à la destination.
- * Utilise sendfile pour copier le fichier et mkdir pour créer le répertoire
+ * @brief copy_entry_to_destination copies a file from the source to the destination
+ * It keeps access modes and mtime (@see utimensat)
+ * Pay attention to the path so that the prefixes are not repeated from the source to the destination
+ * Use sendfile to copy the file, mkdir to create the directory
  */
 void copy_entry_to_destination(files_list_entry_t *source_entry, configuration_t *the_config) {
   // Chemins de la source et de la destination pour le fichier à copier
@@ -160,11 +160,11 @@ void copy_entry_to_destination(files_list_entry_t *source_entry, configuration_t
 }
 
 /*!
- * @brief La fonction make_list liste les fichiers dans un emplacement (elle récursent dans les répertoires).
- * Elle ne récupère pas les propriétés des fichiers, seulement une liste de chemins.
- * Cette fonction est utilisée par make_files_list et make_files_lists_parallel.
- * @param list est un pointeur vers la liste qui sera construite
- * @param target est le répertoire dont le contenu doit être listé
+ * @brief make_list lists files in a location (it recurses in directories)
+ * It doesn't get files properties, only a list of paths
+ * This function is used by make_files_list and make_files_list_parallel
+ * @param list is a pointer to the list that will be built
+ * @param target is the target dir whose content must be listed
  */
 void make_list(files_list_t *list, char *target) {
   // Ouverture du répertoire cible
@@ -187,3 +187,40 @@ void make_list(files_list_t *list, char *target) {
 
   // Fermeture du répertoire
   closedir(dir);
+
+/*!
+ * @brief open_dir opens a dir
+ * @param path is the path to the dir
+ * @return a pointer to a dir, NULL if it cannot be opened
+ */
+DIR *open_dir(char *path) {
+  // Vérification si le répertoire existe
+  if (!directory_exists(path)) {
+      return NULL;
+  } else {
+      // Ouverture du répertoire
+      DIR *dir = opendir(path);
+      return dir;
+  }
+}
+
+/*!
+ * @brief get_next_entry returns the next entry in an already opened dir
+ * @param dir is a pointer to the dir (as a result of opendir, @see open_dir)
+ * @return a struct dirent pointer to the next relevant entry, NULL if none found (use it to stop iterating)
+ * Relevant entries are all regular files and dir, except . and ..
+ */
+struct dirent *get_next_entry(DIR *dir) {
+  struct dirent *entry;
+  while ((entry = readdir(dir)) != NULL) {
+      // Vérification des entrées . et ..
+      if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0) {
+          // Si l'entrée est un fichier régulier ou un répertoire
+          if (entry->d_type == DT_REG || entry->d_type == DT_DIR) {
+              return entry;
+          }
+      }
+  }
+  return NULL; 
+}
+
