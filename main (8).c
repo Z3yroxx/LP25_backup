@@ -24,9 +24,9 @@ int main(int argc, char *argv[]) {
     }
     // - source exists and can be read  
     // - destination exists and can be written OR doesn't exist but can be created
-    DIR *detination;
-    detination = opendir(argv[2]);
-    if (detination == NULL) {
+    DIR *destination;
+    destination = opendir(argv[2]);
+    if (destination == NULL) {
         printf("Erreur lors de l'ouverture de la destination : %s\n", argv[2]);
         int mkdir_result = mkdir(argv[2], 0755);
         if (mkdir_result == -1) {
