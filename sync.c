@@ -46,11 +46,52 @@ bool mismatch(files_list_entry_t *lhd, files_list_entry_t *rhd, bool has_md5) {
 }
 
 /*!
- * @brief make_files_list buils a files list in no parallel mode
+ * @brief make_files_list builds a files list in no parallel mode
  * @param list is a pointer to the list that will be built
  * @param target_path is the path whose files to list
  */
 void make_files_list(files_list_t *list, char *target_path) {
+  list->head = NULL;
+  list->tail = NULL;
+
+  DIR *dir = opendir(target_path);
+  if (dir == NULL) {
+      perror("Error opening directory");
+      return;
+  }
+  
+  struct dirent *entry;
+  while ((entry = readdir(dir)) != NULL) {
+      // Ignorer les fichiers spéciaux "." et ".."
+      if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+          continue;
+      }
+
+      // Créer une nouvelle entrée files_list_entry_t pour chaque fichier
+      files_list_entry_t *new_entry = add_file_entry(list, entry->d_name);
+      if (new_entry == NULL) {
+          perror("Error creating file entry");
+          closedir(dir);
+          return;
+      }
+
+      // Compléter le chemin complet du fichier
+      snprintf(new_entry->path_and_name, sizeof(new_entry->path_and_name), "%s/%s", target_path, entry->d_name);
+
+      // Mise à jour des pointeurs head et tail
+      if (list->head == NULL) {
+          list->head = new_entry;
+          list->tail = new_entry;
+          new_entry->prev = NULL;
+      } else {
+          list->tail->next = new_entry;
+          new_entry->prev = list->tail;
+          list->tail = new_entry;
+      }
+      new_entry->next = NULL;
+  }
+
+    closedir(dir);
 }
 
 /*!
