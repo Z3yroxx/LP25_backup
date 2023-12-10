@@ -20,6 +20,28 @@
  * @param p_context is a pointer to the processes context
  */
 void synchronize(configuration_t *the_config, process_context_t *p_context) {
+  files_list_t src_list, dst_list, diff_list;
+  src_list.head = src_list.tail = NULL;
+  dst_list.head = dst_list.tail = NULL;
+  diff_list.head = diff_list.tail = NULL;
+
+  make_files_list(&src_list, the_config->destination_path);
+  make_files_list(&dst_list, the_config->destination_path);
+
+  files_list_entry_t *src_entry = src_list.head;
+  while (src_entry != NULL) {
+      if (!mismatch(src_entry, dst_list.head, true)) {
+          add_entry_to_tail(&diff_list, src_entry);
+      }
+      src_entry = src_entry->next;
+  }
+
+  files_list_entry_t *diff_entry = diff_list.head;
+  while (diff_entry != NULL) {
+      copy_entry_to_destination(diff_entry, the_config);
+      diff_entry = diff_entry->next;
+  }
+
   
 }
 
