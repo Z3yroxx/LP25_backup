@@ -83,7 +83,7 @@ bool mismatch(files_list_entry_t *lhd, files_list_entry_t *rhd, bool has_md5) {
  * @param target_path est le chemin dont les fichiers doivent être listés
  */
 void make_files_list(files_list_t *list, char *target_path) {
-  // Appel de la fonction pour construire la liste de fichiers
+  // Appel de la fonction pour construire la liste de fichiers de manière séquentielle
   make_list(list, target_path);
 }
 
