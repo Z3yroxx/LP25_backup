@@ -98,13 +98,25 @@ void make_list(files_list_t *list, char *target) {
 }
 
 /*!
+ * @brief open_dir opens a dir
+ * @param path is the path to the dir
+ * @return a pointer to a dir, NULL if it cannot be opened
+ */
+DIR *open_dir(char *path) {
+    DIR *dir = opendir(path);
+    if (dir == NULL) {
+        perror("Erreur lors de l'ouverture du répertoire");
+        return NULL;
+    }
+    return dir;
+}
+
+/*!
  * @brief get_next_entry returns the next entry in an already opened dir
  * @param dir is a pointer to the dir (as a result of opendir, @see open_dir)
  * @return a struct dirent pointer to the next relevant entry, NULL if none found (use it to stop iterating)
  * Relevant entries are all regular files and dir, except . and ..
  */
-#include <dirent.h>
-
 struct dirent *get_next_entry(DIR *dir) {
   
   struct dirent *entry;
