@@ -175,7 +175,7 @@ void make_list(files_list_t *list, char *target) {
       // Construction du chemin complet du fichier
       char file_path[4096];
       snprintf(file_path, sizeof(file_path), "%s/%s", target, entry->d_name);
-      // Ajout du chemin à la liste
+      // Ajout du chemin à la liste chainée
       add_file_entry(list, file_path);
 
       // Si l'entrée est un dossier, récursion pour lister son contenu
