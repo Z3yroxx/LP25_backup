@@ -51,47 +51,7 @@ bool mismatch(files_list_entry_t *lhd, files_list_entry_t *rhd, bool has_md5) {
  * @param target_path is the path whose files to list
  */
 void make_files_list(files_list_t *list, char *target_path) {
-  list->head = NULL;
-  list->tail = NULL;
-
-  DIR *dir = opendir(target_path);
-  if (dir == NULL) {
-      perror("Error opening directory");
-      return;
-  }
-  
-  struct dirent *entry;
-  while ((entry = readdir(dir)) != NULL) {
-      // Ignorer les fichiers spéciaux "." et ".."
-      if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
-          continue;
-      }
-
-      // Créer une nouvelle entrée files_list_entry_t pour chaque fichier
-      files_list_entry_t *new_entry = add_file_entry(list, entry->d_name);
-      if (new_entry == NULL) {
-          perror("Error creating file entry");
-          closedir(dir);
-          return;
-      }
-
-      // Compléter le chemin complet du fichier
-      snprintf(new_entry->path_and_name, sizeof(new_entry->path_and_name), "%s/%s", target_path, entry->d_name);
-
-      // Mise à jour des pointeurs head et tail
-      if (list->head == NULL) {
-          list->head = new_entry;
-          list->tail = new_entry;
-          new_entry->prev = NULL;
-      } else {
-          list->tail->next = new_entry;
-          new_entry->prev = list->tail;
-          list->tail = new_entry;
-      }
-      new_entry->next = NULL;
-  }
-
-    closedir(dir);
+  make_list(list, target_path);
 }
 
 /*!
@@ -121,14 +81,22 @@ void copy_entry_to_destination(files_list_entry_t *source_entry, configuration_t
  * @param target is the target dir whose content must be listed
  */
 void make_list(files_list_t *list, char *target) {
-}
+  DIR *dir = open_dir(target_path);
 
-/*!
- * @brief open_dir opens a dir
- * @param path is the path to the dir
- * @return a pointer to a dir, NULL if it cannot be opened
- */
-DIR *open_dir(char *path) {
+  struct dirent *entry;
+  while ((entry = readdir(dir)) != NULL) {
+      if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0) {
+          char file_path[4096];
+          snprintf(file_path, sizeof(file_path), "%s/%s", target, entry->d_name);
+          add_file_entry(list, file_path);
+
+          if (entry->d_type == DT_DIR) { // Si c'est un répertoire
+              make_list(list, file_path); // Appel récursif pour lister les fichiers dans le sous-répertoire
+          }
+      }
+  }
+
+  closedir(dir);
 }
 
 /*!
