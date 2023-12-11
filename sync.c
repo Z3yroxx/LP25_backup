@@ -152,10 +152,19 @@ void copy_entry_to_destination(files_list_entry_t *source_entry, configuration_t
   // Fermeture des fichiers source et destination
   close(source_fd);
   close(destination_fd);
-
+  
   // Mise à jour des timestamps (mtime) de la destination pour correspondre à ceux de la source
-  struct timespec times[2] = {source_stat.st_atim, source_stat.st_mtim};
-  utimensat(AT_FDCWD, destination_path, times, 0);
+
+  struct timespec times[2];
+  times[0].tv_sec = source_stat.time_t.tv_sec;
+  times[0].tv_nsec = source_stat.st_atim.tv_nsec;
+  times[1].tv_sec = source_stat.st_mtim.tv_sec;
+  times[1].tv_nsec = source_stat.st_mtim.tv_nsec;
+
+  if (utimensat(AT_FDCWD, destination_path, times, 0) == -1) {
+      printf("Erreur lors de la mise à jour des timestamps de la destination");
+      return;
+  }
 }
 
 /*!
