@@ -105,22 +105,35 @@ void make_files_lists_parallel(files_list_t *src_list, files_list_t *dst_list, c
  * Use sendfile to copy the file, mkdir to create the directory
  */
 void copy_entry_to_destination(files_list_entry_t *source_entry, configuration_t *the_config) {
-  // Chemins de la source et de la destination pour le fichier à copier
+  // Chemins source et destination pour le fichier à copier
   char source_path[4096];
   char destination_path[4096];
 
-  // Construction des chemins complets de la source et de la destination
+  // Construction des chemins complets source et destination
   snprintf(source_path, sizeof(source_path), "%s/%s", the_config->source, source_entry->path_and_name);
   snprintf(destination_path, sizeof(destination_path), "%s/%s", the_config->destination, source_entry->path_and_name);
 
+  // Obtention des informations sur le fichier source
+  struct stat source_stat;
+  if (stat(source_path, &source_stat) == -1) {
+    perror("Erreur lors de l'obtention des informations sur le fichier source");
+    return;
+  }
+
   // Vérification si l'entrée est un dossier
-  if (source_entry->entry_type == DOSSIER) {
+  if (S_ISDIR(source_stat.st_mode)) {
+    // Vérification si le répertoire de destination existe déjà
+    struct stat dest_stat;
+    if (stat(destination_path, &dest_stat) == -1) {
       // Création du répertoire de destination s'il n'existe pas déjà
-      if (mkdir(destination_path, 0777) != 0 && errno != EEXIST) {
-          perror("Erreur lors de la création du répertoire destination");
-          return;
+      if (mkdir(destination_path, 0777) != 0) {
+        perror("Erreur lors de la création du répertoire destination");
       }
+    } else if (!S_ISDIR(dest_stat.st_mode)) {
+      printf("Le chemin de destination n'est pas un répertoire.\n");
       return;
+    }
+    return;
   }
 
   // Ouverture des fichiers source et destination
@@ -129,40 +142,34 @@ void copy_entry_to_destination(files_list_entry_t *source_entry, configuration_t
 
   // Vérification des erreurs lors de l'ouverture des fichiers
   if (source_fd == -1 || destination_fd == -1) {
-      perror("Erreur lors de l'ouverture des fichiers");
-      if (source_fd != -1) close(source_fd);
-      if (destination_fd != -1) close(destination_fd);
-      return;
+    perror("Erreur lors de l'ouverture des fichiers");
+    if (source_fd != -1) close(source_fd);
+    if (destination_fd != -1) close(destination_fd);
+    return;
   }
 
-  // Obtention des informations sur le fichier source
-  struct stat source_stat;
-  fstat(source_fd, &source_stat);
-
-  // Copie du fichier de la source vers la destination en utilisant sendfile
+  // Copie du contenu du fichier source vers le fichier destination en utilisant sendfile
   off_t offset = 0;
   ssize_t bytes_copied = sendfile(destination_fd, source_fd, &offset, source_stat.st_size);
   if (bytes_copied == -1) {
-      perror("Erreur lors de la copie du fichier");
-      close(source_fd);
-      close(destination_fd);
-      return;
+    perror("Erreur lors de la copie du fichier");
   }
 
-  // Fermeture des fichiers source et destination
+  // Fermeture des descripteurs de fichiers source et destination
   close(source_fd);
   close(destination_fd);
-  
+
 // Mise à jour des timestamps (mtime) de la destination pour correspondre à ceux de la source
   struct timespec times;
   times.tv_sec = source_stat.st_mtim.tv_sec; // Copie de tv_sec
   times.tv_nsec = source_stat.st_mtim.tv_nsec; // Copie de tv_nsec
 
   if (utimensat(AT_FDCWD, destination_path, times, 0) == -1) {
-      perror("Erreur lors de la mise à jour des timestamps de la destination");
-      return;
+    perror("Erreur lors de la mise à jour des timestamps de la destination");
+    return;
   }
 }
+
 
 /*!
  * @brief make_list lists files in a location (it recurses in directories)
