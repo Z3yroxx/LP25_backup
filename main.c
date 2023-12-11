@@ -25,18 +25,6 @@ int main(int argc, char *argv[]) {
     }
     // - source exists and can be read  
     // - destination exists and can be written OR doesn't exist but can be created
-    DIR *destination;
-    destination = opendir(argv[3]);
-    if (destination == NULL) {
-        printf("Erreur lors de l'ouverture de la destination : %s\n", argv[3]);
-        int mkdir_result = mkdir(argv[3], 0755);
-        if (mkdir_result == -1) {
-            perror("Erreur lors de la création de la destination");
-            return -1;
-        }
-        printf("Le repertoire : %s (destintion), a été créé\n", argv[3]);
-    }
-    closedir(destination);
     
     // - other options with getopt (see instructions)
     configuration_t my_config;
@@ -44,6 +32,19 @@ int main(int argc, char *argv[]) {
     if (set_configuration(&my_config, argc, argv) == -1) {
         return -1;
     }
+    // - destination exists and can be written OR doesn't exist but can be created
+    DIR *destination;
+    destination = opendir(my_config.destination);
+    if (destination == NULL) {
+        printf("Erreur lors de l'ouverture de la destination : %s\n", my_config.destination);
+        int mkdir_result = mkdir(my_config.destination, 0755);
+        if (mkdir_result == -1) {
+            perror("Erreur lors de la création de la destination");
+            return -1;
+        }
+        printf("Le repertoire : %s (destintion), a été créé\n", my_config.destination);
+    }
+    closedir(destination);
 
     // Check directories
     if (!directory_exists(my_config.source) || !directory_exists(my_config.destination)) {
