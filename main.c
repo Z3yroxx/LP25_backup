@@ -35,7 +35,6 @@ int main(int argc, char *argv[]) {
             return -1;
         }
         printf("Le repertoire : %s (destintion), a été créé\n", argv[3]);
-        my_config.destination = opendir(argv[3]);
     }
     closedir(destination);
     
