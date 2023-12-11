@@ -153,16 +153,13 @@ void copy_entry_to_destination(files_list_entry_t *source_entry, configuration_t
   close(source_fd);
   close(destination_fd);
   
-  // Mise à jour des timestamps (mtime) de la destination pour correspondre à ceux de la source
-
-  struct timespec times[2];
-  times[0].tv_sec = source_stat.time_t.tv_sec;
-  times[0].tv_nsec = source_stat.st_atim.tv_nsec;
-  times[1].tv_sec = source_stat.st_mtim.tv_sec;
-  times[1].tv_nsec = source_stat.st_mtim.tv_nsec;
+// Mise à jour des timestamps (mtime) de la destination pour correspondre à ceux de la source
+  struct timespec times;
+  times.tv_sec = source_stat.st_mtim.tv_sec; // Copie de tv_sec
+  times.tv_nsec = source_stat.st_mtim.tv_nsec; // Copie de tv_nsec
 
   if (utimensat(AT_FDCWD, destination_path, times, 0) == -1) {
-      printf("Erreur lors de la mise à jour des timestamps de la destination");
+      perror("Erreur lors de la mise à jour des timestamps de la destination");
       return;
   }
 }
@@ -195,6 +192,7 @@ void make_list(files_list_t *list, char *target) {
 
   // Fermeture du répertoire
   closedir(dir);
+}
 
 /*!
  * @brief open_dir opens a dir
@@ -219,17 +217,28 @@ DIR *open_dir(char *path) {
  * Relevant entries are all regular files and dir, except . and ..
  */
 struct dirent *get_next_entry(DIR *dir) {
-  struct dirent *entry;
-  while ((entry = readdir(dir)) != NULL) {
-      // Vérification des entrées . et ..
-      if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0) {
-          // Si l'entrée est un fichier régulier ou un répertoire
-          if (entry->d_type == DT_REG || entry->d_type == DT_DIR) {
-              return entry;
-          }
-      }
-  }
-  return NULL; 
+    // Vérifie si le pointeur de répertoire est NULL
+    if (!dir)
+        return NULL;
+    // Lit la première entrée du répertoire
+    struct dirent *entry = readdir(dir);
+    // Si aucune entrée n'est lue, renvoie NULL
+    if (!entry)
+        return NULL;
+    // Boucle pour rechercher la prochaine entrée de répertoire valide
+    while (entry) {
+        // Vérifie si l'entrée est "." (répertoire courant), ".." (répertoire parent),
+        // ou si elle n'est pas un répertoire (DT_DIR) ou un fichier régulier (DT_REG)
+        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0
+            || entry->d_type != DT_DIR || entry->d_type == DT_REG) {
+            // Passe à l'entrée suivante si l'entrée actuelle n'est pas valide
+            entry = readdir(dir);
+        } else {
+            break;
+        }
+    }
+    // Renvoie l'entrée de répertoire valide trouvée 
+    return entry;
 }
 
 

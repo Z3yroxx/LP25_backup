@@ -34,7 +34,8 @@ int get_file_stats(files_list_entry_t *entry) {
     }
     if (S_ISREG(info.st_mode)) {
         entry->mode = info.st_mode;
-        entry->mtime = info.st_mtim;
+        entry->mtime.tv_sec = info.st_mtim.tv_sec; // Attribution du temps de modification
+        entry->mtime.tv_nsec = info.st_mtim.tv_nsec; // Attribution des nanosecondes
         entry->size = info.st_size;
         entry->entry_type = FICHIER;
 
