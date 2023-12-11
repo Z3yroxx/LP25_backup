@@ -20,6 +20,7 @@ int main(int argc, char *argv[]) {
     // - source and destination are provided
     if (argc != 4){
         printf("il faut fournir 3 arguments : une option, une source et une destination\n");
+        printf("Usage: %s option source destination\n", argv[0]);
         return -1;
     }
     // - source exists and can be read  
