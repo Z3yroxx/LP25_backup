@@ -1,1 +1,2 @@
 ICI les retours d'expériences, problèmes rencontrés etc (pour le rapport + soutenance)
+Des commentaires pertinents sur le flux d'une fonction (astuces, cas limites, détails de l'algorithme, etc.)
