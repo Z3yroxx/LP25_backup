@@ -42,7 +42,7 @@ int main(int argc, char *argv[]) {
             perror("Erreur lors de la création de la destination");
             return -1;
         }
-        printf("Le repertoire : %s (destintion), a été créé\n", my_config.destination);
+        printf("Le repertoire : %s (destination), a été créé\n", my_config.destination);
     }
     closedir(destination);
 
