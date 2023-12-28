@@ -33,7 +33,7 @@ void synchronize(configuration_t *the_config, process_context_t *p_context) {
   // Comparaison des listes pour détecter les différences
   files_list_entry_t *src_entry = src_list.head;
   while (src_entry != NULL) {
-      if (!mismatch(src_entry, dst_list.head, the_config->uses_md5)) {
+      if (mismatch(src_entry, dst_list.head, the_config->uses_md5)) {
           add_entry_to_tail(&diff_list, src_entry);
       }
       src_entry = src_entry->next;
@@ -60,6 +60,13 @@ void synchronize(configuration_t *the_config, process_context_t *p_context) {
  * @return true if both files are not equal, false else
  */
 bool mismatch(files_list_entry_t *lhd, files_list_entry_t *rhd, bool has_md5) {
+
+  // Vérification des paramètres passés
+  if (lhd == NULL || rhd == NULL) {
+    printf("Paramètres invalides\n");
+    return true; 
+  }
+
   // Comparaison des attributs des fichiers
   if (lhd->size != rhd->size ||
       lhd->mtime.tv_sec != rhd->mtime.tv_sec ||
@@ -78,14 +85,27 @@ bool mismatch(files_list_entry_t *lhd, files_list_entry_t *rhd, bool has_md5) {
 }
 
 /*!
- * @brief make_files_list buils a files list in no parallel mode
+ * @brief make_files_list builds a files list in no parallel mode
  * @param list is a pointer to the list that will be built
  * @param target_path is the path whose files to list
  */
 void make_files_list(files_list_t *list, char *target_path) {
+
+  // Vérification des paramètres passés
+  if (list == NULL || target_path == NULL) {
+    printf("Paramètres invalides\n");
+    return;
+  }
+
+  // Vérification de l'existence du répertoire cible
+  if (!directory_exists(target_path)) {
+    return;
+  }
+
   // Appel de la fonction pour construire la liste de fichiers
   make_list(list, target_path);
 }
+
 
 /*!
  * @brief make_files_lists_parallel makes both (src and dest) files list with parallel processing
@@ -105,70 +125,82 @@ void make_files_lists_parallel(files_list_t *src_list, files_list_t *dst_list, c
  * Use sendfile to copy the file, mkdir to create the directory
  */
 void copy_entry_to_destination(files_list_entry_t *source_entry, configuration_t *the_config) {
-  // Chemins source et destination pour le fichier à copier
-  char source_path[4096];
-  char destination_path[4096];
-
-  // Construction des chemins complets source et destination
-  snprintf(source_path, sizeof(source_path), "%s/%s", the_config->source, source_entry->path_and_name);
-  snprintf(destination_path, sizeof(destination_path), "%s/%s", the_config->destination, source_entry->path_and_name);
-
-  // Obtention des informations sur le fichier source
-  struct stat source_stat;
-  if (stat(source_path, &source_stat) == -1) {
-    perror("Erreur lors de l'obtention des informations sur le fichier source");
-    return;
-  }
-
-  // Vérification si l'entrée est un dossier
-  if (S_ISDIR(source_stat.st_mode)) {
-    // Vérification si le répertoire de destination existe déjà
-    struct stat dest_stat;
-    if (stat(destination_path, &dest_stat) == -1) {
-      // Création du répertoire de destination s'il n'existe pas déjà
-      if (mkdir(destination_path, 0777) != 0) {
-        perror("Erreur lors de la création du répertoire destination");
-      }
-    } else if (!S_ISDIR(dest_stat.st_mode)) {
-      printf("Le chemin de destination n'est pas un répertoire.\n");
+  // Vérification des paramètres passés
+  if (source_entry == NULL || the_config == NULL) {
+      printf("Paramètres invalides\n");
       return;
-    }
-    return;
   }
 
-  // Ouverture des fichiers source et destination
+  // Chemin source du fichier à copier
+  const char *source_path = source_entry->path_and_name;
+
+  // Construire le chemin de destination pour le fichier
+  char destination_path[4096];
+  snprintf(destination_path, sizeof(destination_path), "%s/%s", the_config->destination, source_path + strlen(the_config->source));
+
+  // Trouver le dernier '/' dans le chemin source pour obtenir le répertoire parent
+  char *last_slash = strrchr(destination_path, '/');
+  if (last_slash != NULL) {
+      *last_slash = '\0'; // Mettre fin au chemin au répertoire parent
+      // Vérifier si le répertoire parent existe dans la destination, sinon le créer
+      if (mkdir(destination_path, 0777) == -1 && errno != EEXIST) {
+          perror("Erreur lors de la création du répertoire parent dans la destination");
+          return;
+      }
+      *last_slash = '/'; // Restaurer le chemin complet
+  }
+
+  // Si c'est un répertoire, rien à copier, juste à recréer la structure
+  if (source_entry->is_directory) {
+      // Création du répertoire dans la destination si nécessaire
+      if (mkdir(destination_path, 0777) != 0 && errno != EEXIST) {
+          perror("Erreur lors de la création du répertoire dans la destination");
+      }
+      return;
+  }
+
+  // Copie du fichier
   int source_fd = open(source_path, O_RDONLY);
+  if (source_fd == -1) {
+      perror("Erreur lors de l'ouverture du fichier source");
+      return;
+  }
+
   int destination_fd = open(destination_path, O_WRONLY | O_CREAT | O_TRUNC, 0777);
-
-  // Vérification des erreurs lors de l'ouverture des fichiers
-  if (source_fd == -1 || destination_fd == -1) {
-    perror("Erreur lors de l'ouverture des fichiers");
-    if (source_fd != -1) close(source_fd);
-    if (destination_fd != -1) close(destination_fd);
-    return;
+  if (destination_fd == -1) {
+      perror("Erreur lors de l'ouverture du fichier destination");
+      close(source_fd);
+      return;
   }
 
-  // Copie du contenu du fichier source vers le fichier destination en utilisant sendfile
-  off_t offset = 0;
-  ssize_t bytes_copied = sendfile(destination_fd, source_fd, &offset, source_stat.st_size);
-  if (bytes_copied == -1) {
-    perror("Erreur lors de la copie du fichier");
+  // Copie du contenu du fichier source vers le fichier destination
+  ssize_t bytes_read;
+  char buffer[4096];
+  while ((bytes_read = read(source_fd, buffer, sizeof(buffer))) > 0) {
+      ssize_t bytes_written = write(destination_fd, buffer, bytes_read);
+      if (bytes_written == -1) {
+          perror("Erreur lors de l'écriture dans le fichier destination");
+          close(source_fd);
+          close(destination_fd);
+          return;
+      }
   }
 
-  // Fermeture des descripteurs de fichiers source et destination
+  // Fermeture des descripteurs de fichiers
   close(source_fd);
   close(destination_fd);
 
-// Mise à jour des timestamps (mtime) de la destination pour correspondre à ceux de la source
-  struct timespec times;
-  times.tv_sec = source_stat.st_mtim.tv_sec; // Copie de tv_sec
-  times.tv_nsec = source_stat.st_mtim.tv_nsec; // Copie de tv_nsec
+  // Mise à jour des timestamps (atime et mtime) de la destination pour correspondre à ceux de la source_entry
+  struct timespec times[2];
+  times[0] = source_entry->atime; // Copie des timestamps d'accès
+  times[1] = source_entry->mtime; // Copie des timestamps de modification
 
   if (utimensat(AT_FDCWD, destination_path, times, 0) == -1) {
-    perror("Erreur lors de la mise à jour des timestamps de la destination");
-    return;
+      perror("Erreur lors de la mise à jour des timestamps de la destination");
+      return;
   }
 }
+
 
 
 /*!
@@ -178,13 +210,25 @@ void copy_entry_to_destination(files_list_entry_t *source_entry, configuration_t
  * @param list is a pointer to the list that will be built
  * @param target is the target dir whose content must be listed
  */
-void make_list(files_list_t *list, char *target) {
+void make_list(files_list_t *list, const char *target) {
+
+  // Vérification des paramètres passés
+  if (list == NULL || target_path == NULL) {
+    printf("Paramètres invalides\n");
+    return;
+  }
+
+  // Vérification de l'existence du répertoire cible
+  if (!directory_exists(target_path)) {
+    return;
+  }
+
   // Ouverture du répertoire cible
   DIR *dir = open_dir(target);
 
   // Récupération des entrées du répertoire
   struct dirent *entry;
-  while ((entry = get_next_entry(dir)) != NULL) {
+  while ((entry = readdir(dir)) != NULL) {
       // Construction du chemin complet du fichier
       char file_path[4096];
       snprintf(file_path, sizeof(file_path), "%s/%s", target, entry->d_name);
@@ -192,7 +236,7 @@ void make_list(files_list_t *list, char *target) {
       add_file_entry(list, file_path);
 
       // Si l'entrée est un dossier, récursion pour lister son contenu
-      if (entry->d_type == DT_DIR) { 
+      if (entry->d_type == DT_DIR && strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0) { 
           make_list(list, file_path); 
       }
   }
@@ -200,6 +244,7 @@ void make_list(files_list_t *list, char *target) {
   // Fermeture du répertoire
   closedir(dir);
 }
+
 
 /*!
  * @brief open_dir opens a dir

@@ -9,6 +9,7 @@ typedef enum { FICHIER, DOSSIER } file_type_t;
 typedef struct _files_list_entry {
   char path_and_name[4096];
   struct timespec mtime;
+  struct timespec atime;
   uint64_t size;
   uint8_t md5sum[16];
   file_type_t entry_type;
