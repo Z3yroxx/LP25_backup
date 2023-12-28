@@ -142,13 +142,16 @@ void copy_entry_to_destination(files_list_entry_t *source_entry, configuration_t
   char *last_slash = strrchr(destination_path, '/');
   if (last_slash != NULL) {
       *last_slash = '\0'; // Mettre fin au chemin au répertoire parent
+
       // Vérifier si le répertoire parent existe dans la destination, sinon le créer
       if (mkdir(destination_path, 0777) == -1 && errno != EEXIST) {
           perror("Erreur lors de la création du répertoire parent dans la destination");
           return;
       }
+
       *last_slash = '/'; // Restaurer le chemin complet
   }
+
 
   // Si c'est un répertoire, rien à copier, juste à recréer la structure
   if (source_entry->is_directory) {
