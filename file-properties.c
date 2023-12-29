@@ -28,6 +28,12 @@
  */
 int get_file_stats(files_list_entry_t *entry) {
     struct stat info;
+
+    if (entry == NULL) {
+        printf("Erreur d'entrée : NULL\n");
+        return -1;
+    }
+    
     if (stat(entry->path_and_name, &info) == -1) {
         printf("Erreur lors de la lecture des informations du fichier ou du dossier");
         return -1;
