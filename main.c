@@ -33,6 +33,20 @@ int main(int argc, char *argv[]) {
         return -1;
     }
 
+    // - destination exists and can be written OR doesn't exist but can be created
+    DIR *destination;
+    destination = opendir(my_config.destination);
+    if (destination == NULL) {
+        printf("Erreur lors de l'ouverture de la destination : %s\n", my_config.destination);
+        int mkdir_result = mkdir(my_config.destination, 0755);
+        if (mkdir_result == -1) {
+            perror("Erreur lors de la création de la destination");
+            return -1;
+        }
+        printf("Le repertoire : %s (destination), a été créé\n", my_config.destination);
+    }
+    closedir(destination);
+
     // Check directories
     if (!directory_exists(my_config.source) || !directory_exists(my_config.destination)) {
         printf("Either source or destination directory do not exist\nAborting\n");
