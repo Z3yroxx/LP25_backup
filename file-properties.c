@@ -101,6 +101,11 @@ int compute_file_md5(files_list_entry_t *entry) {
  */
 bool directory_exists(char *path_to_dir) {
 
+    if (path_to_dir == NULL) {
+        printf("Erreur répertoire : NULL\n");
+        return false;
+    }
+    
     DIR *directory;
     directory = opendir(path_to_dir);
     if (directory == NULL) {
