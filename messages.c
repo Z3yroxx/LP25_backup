@@ -14,24 +14,29 @@
  * Used by the specialized functions send_analyze*
  */
 int send_file_entry(int msg_queue, int recipient, files_list_entry_t *file_entry, int cmd_code) {
-  
+  //Vérification du paramètre file_entry
   if (file_entry == NULL) {
       printf("Erreur : file_entry = NULL\n");
       return -1;
   }
 
+  //Mise à jour de la stucture avec les paramètres reçu par la fonction
   any_message_t msg;
   msg.list_entry.mtype = recipient;
   msg.list_entry.op_code = cmd_code;
+
+  //Copie des données réceptionné dans la structure
   memcpy(&msg.list_entry.payload, file_entry, sizeof(files_list_entry_t));
 
+  //Envoie du message
   int snd = msgsnd(msg_queue, &msg, sizeof(msg) - sizeof(long), 0);
 
+  //Vérification de la réussite ou non de l'envoie du message
   if (snd == -1) {
       perror("Erreur lors de l'envoi du message");
       return -1;
   }
-
+  
   return snd;
 }
 
