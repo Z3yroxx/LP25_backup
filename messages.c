@@ -123,134 +123,29 @@ int send_files_list_element(int msg_queue, int recipient, files_list_entry_t *fi
  */
 int send_list_end(int msg_queue, int recipient) {
 
-    simple_command_t message;
-    message.mtype = recipient; // Modify the message type as needed
-    message.message = 'L'; // 'L' for end of list (example)
-
-    // Sending end of list message
-
-    int msg = msgsnd(msg_queue, &message, sizeof(simple_command_t), 0);
-
-    if (msg == -1) {
-        perror("Error in sending end of list message");
-        return errno;
-    }
-
-    return msg;
-}/*!
- * @brief send_files_list_element sends a files list entry from a complete files list
- * @param msg_queue the MQ identifier through which to send the entry
- * @param recipient is the id of the recipient (as specified by mtype)
- * @param file_entry is a pointer to the entry to send (must be copied)
- * @return the result of the send_file_entry function
- * Calls send_file_entry function
- */
-int send_files_list_element(int msg_queue, int recipient, files_list_entry_t *file_entry) {
-
-    if (msg_queue <= 0 || recipient <= 0 || file_entry == NULL) {
-        printf("Error: Invalid parameters for sending files list element.\n");
-        return -1;
-    }
-
-    files_list_entry_transmit_t entry_message;
-    entry_message.mtype = recipient;
-    entry_message.op_code = 'T'; // OpCode for transmitting a list entry
-    entry_message.payload = *file_entry; // Copy of the files list entry
-    entry_message.reply_to = msg_queue; // MQ id of the sender for the list
-
-    // Sending the message
-    int send_result = msgsnd(msg_queue, &entry_message, sizeof(files_list_entry_transmit_t) - sizeof(long), 0);
-
-    if (send_result == -1) {
-        perror("Error sending files list element");
-        return -1; // In case of error
-    }
-
-    return send_result; // Returns the result of msgsnd
-}
-
-/*!
- * @brief send_list_end sends the end of list message to the main process
- * @param msg_queue is the id of the MQ used to send the message
- * @param recipient is the destination of the message
- * @return the result of msgsnd
- */
-int send_list_end(int msg_queue, int recipient) {
-
-    simple_command_t message;
-    message.mtype = recipient; // Modify the message type as needed
-    message.message = 'L'; // 'L' for end of list (example)
-
-    // Sending end of list message
-
-    int msg = msgsnd(msg_queue, &message, sizeof(simple_command_t), 0);
-
-    if (msg == -1) {
-        perror("Error in sending end of list message");
-        return errno;
-    }
-
-    return msg;
-}
-
-/*!
- * @brief send_terminate_command sends a terminate command to a child process so it stops
- * @param msg_queue is the MQ id used to send the command
- * @param recipient is the target of the terminate command
- * @return the result of msgsnd
- */
-int send_terminate_command(int msg_queue, int recipient) {
-
-    if (msg_queue <= 0 || recipient <= 0) {
-        printf("Error: Message queue or recipient is invalid.\n");
-        return -1;
-    }
-
-    files_list_end_t end_message;
-    end_message.mtype = recipient; 
-    end_message.op_code = 'T'; // Command code for end of list transmission
-
-    // Sending the message
-    int send_result = msgsnd(recipient, &end_message, sizeof(files_list_end_t) - sizeof(long), 0);
-    
-    if (send_result == -1) {
-        perror("Error sending end of list message");
-        return -1; // In case of error
-    }
-
-    return send_result; // Returns the result of msgsnd
-}
-
-/*!
- * @brief send_terminate_confirm sends a terminate confirmation from a child process to the requesting parent.
- * @param msg_queue is the id of the MQ used to send the message
- * @param recipient is the destination of the message
- * @return the result of msgsnd
- */
-int send_terminate_confirm(int msg_queue, int recipient) {
-
     //Vérification des paramètres
     if (msg_queue <= 0 || recipient <= 0) {
-        printf("Error: msg_queue or recipient is NULL\n");
-        return -1; // Handling case where parameters are null or invalid
+        printf("Error: Invalid message queue or recipient\n");
+        return -
+        1;
     }
-
     //Mise à jour de la stucture avec les paramètres reçus par la fonction
-    simple_command_t terminate_confirm_message;
-    terminate_confirm_message.mtype = recipient;
-    terminate_confirm_message.message = 'T'; // Valeur arbitraire pour indiquer la confirmation de la terminaison
+    simple_command_t end_message;
+    end_message.mtype = recipient;
+    end_message.message = END_OF_LIST;
 
-    //Envoi du message 
-    int result = msgsnd(msg_queue, &terminate_confirm_message, sizeof(terminate_confirm_message.message), 0);
+    //Envoi du message
+    int msg_sent = msgsnd(msg_queue, &end_message, sizeof(simple_command_t) - sizeof(long), 0);
 
     //Vérification de la réussite ou non de l'envoi de la commande
-    if (result == -1) {
-        perror("Error sending message");
-        return -1;
+    if (msg_sent == -1) {
+        perror("Error sending end of list message");
+        return errno;
     }
 
-    return result; 
+    return msg_sent;
 }
+
 
 /*!
  * @brief send_terminate_command sends a terminate command to a child process so it stops
