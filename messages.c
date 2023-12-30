@@ -14,9 +14,10 @@
  * Used by the specialized functions send_analyze*
  */
 int send_file_entry(int msg_queue, int recipient, files_list_entry_t *file_entry, int cmd_code) {
+  
   //Vérification du paramètre file_entry
   if (file_entry == NULL) {
-      printf("Erreur : file_entry = NULL\n");
+      printf("Erreur : file_entry est NULL\n");
       return -1;
   }
 
@@ -48,6 +49,32 @@ int send_file_entry(int msg_queue, int recipient, files_list_entry_t *file_entry
  * @return the result of msgsnd
  */
 int send_analyze_dir_command(int msg_queue, int recipient, char *target_dir) {
+  
+  //Vérification du paramètre target_dir
+  if (target_dir == NULL) {
+      printf("Erreur : target_dir est NULL\n");
+      return -1;
+  }
+
+  //Mise à jour de la stucture avec les paramètres reçus par la fonction
+  analyze_dir_command_t cmd;
+  cmd.mtype = recipient;
+  cmd.op_code = 1;
+
+  //Copie des données réceptionnées dans la structure
+  strncpy(cmd.target, target_dir, sizeof(cmd.target) - 1);
+  cmd.target[sizeof(cmd.target) - 1] = '\0'; // Assure la terminaison nulle
+
+  //Envoi de la commande
+  int snd = msgsnd(msg_queue, &cmd, sizeof(cmd) - sizeof(long), 0);
+
+  //Vérification de la réussite ou non de l'envoi de la commande
+  if (snd == -1) {
+      printf("Erreur lors de l'envoi de la commande");
+      return -1;
+  }
+
+  return snd;
 }
 
 // The 3 following functions are one-liners
