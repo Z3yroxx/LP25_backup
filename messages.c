@@ -20,19 +20,19 @@ int send_file_entry(int msg_queue, int recipient, files_list_entry_t *file_entry
       return -1;
   }
 
-  any_message_t message;
-  message.list_entry.mtype = recipient;
-  message.list_entry.op_code = cmd_code;
-  memcpy(&message.list_entry.payload, file_entry, sizeof(files_list_entry_t));
+  any_message_t msg;
+  msg.list_entry.mtype = recipient;
+  msg.list_entry.op_code = cmd_code;
+  memcpy(&msg.list_entry.payload, file_entry, sizeof(files_list_entry_t));
 
-  int msg = msgsnd(msg_queue, &message, sizeof(files_list_entry_transmit_t) - sizeof(long), 0);
+  int snd = msgsnd(msg_queue, &msg, sizeof(msg) - sizeof(long), 0);
 
-  if (msg == -1) {
+  if (snd == -1) {
       perror("Erreur lors de l'envoi du message");
       return -1;
   }
 
-  return msg;
+  return snd;
 }
 
 /*!
