@@ -20,20 +20,20 @@ int send_file_entry(int msg_queue, int recipient, files_list_entry_t *file_entry
       return -1;
   }
 
-  //Mise à jour de la stucture avec les paramètres reçu par la fonction
+  //Mise à jour de la stucture avec les paramètres reçus par la fonction
   any_message_t msg;
   msg.list_entry.mtype = recipient;
   msg.list_entry.op_code = cmd_code;
 
-  //Copie des données réceptionné dans la structure
+  //Copie des données réceptionnées dans la structure
   memcpy(&msg.list_entry.payload, file_entry, sizeof(files_list_entry_t));
 
-  //Envoie du message
+  //Envoi du message
   int snd = msgsnd(msg_queue, &msg, sizeof(msg) - sizeof(long), 0);
 
-  //Vérification de la réussite ou non de l'envoie du message
+  //Vérification de la réussite ou non de l'envoi du message
   if (snd == -1) {
-      perror("Erreur lors de l'envoi du message");
+      printf("Erreur lors de l'envoi du message");
       return -1;
   }
   
