@@ -14,6 +14,25 @@
  * Used by the specialized functions send_analyze*
  */
 int send_file_entry(int msg_queue, int recipient, files_list_entry_t *file_entry, int cmd_code) {
+  
+  if (file_entry == NULL) {
+      printf("Erreur : file_entry = NULL\n");
+      return -1;
+  }
+
+  any_message_t message;
+  message.list_entry.mtype = recipient;
+  message.list_entry.op_code = cmd_code;
+  memcpy(&message.list_entry.payload, file_entry, sizeof(files_list_entry_t));
+
+  int msg = msgsnd(msg_queue, &message, sizeof(files_list_entry_transmit_t) - sizeof(long), 0);
+
+  if (msg == -1) {
+      perror("Erreur lors de l'envoi du message");
+      return -1;
+  }
+
+  return msg;
 }
 
 /*!
