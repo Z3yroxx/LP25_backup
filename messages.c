@@ -128,8 +128,7 @@ int send_list_end(int msg_queue, int recipient) {
     //Vérification des paramètres
     if (msg_queue <= 0 || recipient <= 0) {
         printf("Error: Invalid message queue or recipient\n");
-        return -
-        1;
+        return -1;
     }
     //Mise à jour de la stucture avec les paramètres reçus par la fonction
     simple_command_t end_message;
