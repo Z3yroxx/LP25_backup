@@ -89,6 +89,8 @@ int send_analyze_dir_command(int msg_queue, int recipient, char *target_dir) {
  */
 int send_analyze_file_command(int msg_queue, int recipient, files_list_entry_t *file_entry) {
   return send_file_entry(msg_queue, recipient, file_entry, 1);
+
+  //Attention : utilisation de la structure analyse_file_command_t
 }
 
 /*!
