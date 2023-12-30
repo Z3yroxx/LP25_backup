@@ -111,26 +111,26 @@ int send_analyze_file_response(int msg_queue, int recipient, files_list_entry_t 
  */
 int send_files_list_element(int msg_queue, int recipient, files_list_entry_t *file_entry) {
 
-    if (msg_queue == 0 || recipient == 0 || file_entry == NULL) {
-        printf("Erreur : Paramètres non valides pour l'envoi de l'élément de liste de fichiers.\n");
+    if (msg_queue <= 0 || recipient <= 0 || file_entry == NULL) {
+        printf("Error: Invalid parameters for sending files list element.\n");
         return -1;
     }
 
     files_list_entry_transmit_t entry_message;
     entry_message.mtype = recipient;
-    entry_message.op_code = 'T'; // Op_code pour la transmission d'une entrée de liste
-    entry_message.payload = *file_entry; // Copie de l'entrée de la liste de fichiers
-    entry_message.reply_to = msg_queue; // MQ id de l'expéditeur pour la liste
+    entry_message.op_code = 'T'; // OpCode for transmitting a list entry
+    entry_message.payload = *file_entry; // Copy of the files list entry
+    entry_message.reply_to = msg_queue; // MQ id of the sender for the list
 
-    // Envoi du message
+    // Sending the message
     int send_result = msgsnd(msg_queue, &entry_message, sizeof(files_list_entry_transmit_t) - sizeof(long), 0);
 
     if (send_result == -1) {
-        perror("Erreur lors de l'envoi de l'élément de liste de fichiers");
-        return -1; // En cas d'erreur
+        perror("Error sending files list element");
+        return -1; // In case of error
     }
 
-    return send_result; // Renvoie le résultat de msgsnd
+    return send_result; // Returns the result of msgsnd
 }
 
 /*!
@@ -139,7 +139,6 @@ int send_files_list_element(int msg_queue, int recipient, files_list_entry_t *fi
  * @param recipient is the destination of the message
  * @return the result of msgsnd
  */
-
 int send_list_end(int msg_queue, int recipient) {
 
     simple_command_t message;
@@ -156,8 +155,6 @@ int send_list_end(int msg_queue, int recipient) {
     }
 
     return msg;
-
-    return 0; // Success
 }
 
 /*!
@@ -168,25 +165,26 @@ int send_list_end(int msg_queue, int recipient) {
  */
 int send_terminate_command(int msg_queue, int recipient) {
 
-    if (msg_queue == 0 || recipient == 0) {
-        printf("Erreur : File de messages ou destinataire non valide.\n");
+    if (msg_queue <= 0 || recipient <= 0) {
+        printf("Error: Message queue or recipient is invalid.\n");
         return -1;
     }
 
-    files_list_end_t end_message;
+    simple_command_t end_message;
     end_message.mtype = recipient; 
-    end_message.op_code = 'T'; // Code de commande pour la fin de transmission de liste
+    end_message.op_code = 'T'; // Command code for end of list transmission
 
-    // Envoi du message
-    int send_result = msgsnd(recipient, &end_message, sizeof(files_list_end_t) - sizeof(long), 0);
+    // Sending the message
+    int send_result = msgsnd(recipient, &end_message, sizeof(simple_command_t) - sizeof(long), 0);
     
     if (send_result == -1) {
-        perror("Erreur lors de l'envoi du message de fin de liste");
-        return -1; // En cas d'erreur
+        perror("Error sending end of list message");
+        return -1; // In case of error
     }
 
-    return send_result; // Renvoie le résultat de msgsnd
+    return send_result; // Returns the result of msgsnd
 }
+
 /*!
  * @brief send_terminate_confirm sends a terminate confirmation from a child process to the requesting parent.
  * @param msg_queue is the id of the MQ used to send the message
@@ -195,24 +193,24 @@ int send_terminate_command(int msg_queue, int recipient) {
  */
 int send_terminate_confirm(int msg_queue, int recipient) {
 
-    if (msg_queue == 0 || recipient == 0) {
-        printf("Erreur : file_entry = NULL\n");
-        return -1; // Gestion du cas où les paramètres sont nuls ou invalides
+    if (msg_queue <= 0 || recipient <= 0) {
+        printf("Error: msg_queue or recipient is NULL\n");
+        return -1; // Handling case where parameters are null or invalid
     }
 
-    // Création du message de confirmation de terminaison
+    // Creating termination confirmation message
     simple_command_t terminate_confirm_message;
     terminate_confirm_message.mtype = recipient;
-    terminate_confirm_message.message = 'T'; // Valeur arbitraire pour indiquer la confirmation de terminaison
+    terminate_confirm_message.message = 'T'; // Arbitrary value to indicate termination confirmation
 
-    // Envoi du message à la file de messages spécifiée
+    // Sending the message to the specified message queue
     int result = msgsnd(msg_queue, &terminate_confirm_message, sizeof(terminate_confirm_message.message), 0);
 
 
     if (result == -1) {
-        perror("Erreur lors de l'envoi du message");
+        perror("Error sending message");
         return -1;
     }
 
-    return result; // Retourne le résultat de msgsnd
+    return result; // Returns the result of msgsnd
 }
