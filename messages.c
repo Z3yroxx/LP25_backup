@@ -88,7 +88,7 @@ int send_analyze_dir_command(int msg_queue, int recipient, char *target_dir) {
  * Calls send_file_entry function
  */
 int send_analyze_file_command(int msg_queue, int recipient, files_list_entry_t *file_entry) {
-  return send_file_entry(msg_queue, recipient, file_entry, 1);
+  return send_file_entry(msg_queue, recipient, file_entry, COMMAND_CODE_ANALYZE_FILE);
 
   //Attention : utilisation de la structure analyse_file_command_t
 }
@@ -102,7 +102,7 @@ int send_analyze_file_command(int msg_queue, int recipient, files_list_entry_t *
  * Calls send_file_entry function
  */
 int send_analyze_file_response(int msg_queue, int recipient, files_list_entry_t *file_entry) {
-  return send_file_entry(msg_queue, recipient, file_entry, 1);
+  return send_file_entry(msg_queue, recipient, file_entry, COMMAND_CODE_FILE_ANALYZED);
 }
 
 /*!
@@ -114,98 +114,75 @@ int send_analyze_file_response(int msg_queue, int recipient, files_list_entry_t 
  * Calls send_file_entry function
  */
 int send_files_list_element(int msg_queue, int recipient, files_list_entry_t *file_entry) {
-  return send_file_entry(msg_queue, recipient, file_entry, 1);
+  return send_file_entry(msg_queue, recipient, file_entry, COMMAND_CODE_FILE_ENTRY);
 }
 
+
 /*!
- * @brief send_list_end sends the end of list message to the main process
- * @param msg_queue is the id of the MQ used to send the message
- * @param recipient is the destination of the message
- * @return the result of msgsnd
+ * @brief send_list_end envoie un message de fin de liste au processus principal
+ * @param msg_queue est l'identifiant de la file de messages utilisée pour envoyer le message
+ * @param recipient est la destination du message
+ * @return le résultat de msgsnd
  */
 int send_list_end(int msg_queue, int recipient) {
 
-    //Vérification des paramètres
+    // Vérification des paramètres
     if (msg_queue <= 0 || recipient <= 0) {
-        printf("Error: Invalid message queue or recipient\n");
+        printf("Error sending message\n");
         return -1;
     }
-    //Mise à jour de la stucture avec les paramètres reçus par la fonction
+
+    // Mise à jour de la structure avec les paramètres reçus par la fonction
     simple_command_t end_message;
     end_message.mtype = recipient;
-    end_message.message = END_OF_LIST;
+    end_message.message = COMMAND_CODE_LIST_COMPLETE;
 
-    //Envoi du message
-    int msg_sent = msgsnd(msg_queue, &end_message, sizeof(simple_command_t) - sizeof(long), 0);
-
-    //Vérification de la réussite ou non de l'envoi de la commande
-    if (msg_sent == -1) {
-        perror("Error sending end of list message");
-        return errno;
-    }
-
-    return msg_sent;
+    // Envoi du message
+    return msgsnd(msg_queue, &end_message, sizeof(char), 0);
 }
 
-
 /*!
- * @brief send_terminate_command sends a terminate command to a child process so it stops
- * @param msg_queue is the MQ id used to send the command
- * @param recipient is the target of the terminate command
- * @return the result of msgsnd
+ * @brief send_terminate_command envoie une commande de terminaison à un processus enfant pour qu'il s'arrête
+ * @param msg_queue est l'identifiant de la file de messages utilisée pour envoyer la commande
+ * @param recipient est la cible de la commande de terminaison
+ * @return le résultat de msgsnd
  */
 int send_terminate_command(int msg_queue, int recipient) {
 
-    //Vérification des paramètres
+    // Vérification des paramètres
     if (msg_queue <= 0 || recipient <= 0) {
-        printf("Error: Message queue or recipient is invalid.\n");
+        printf("Error sending message\n");
         return -1;
     }
-    //Mise à jour de la stucture avec les paramètres reçus par la fonction
-    simple_command_t end_message;
-    end_message.mtype = recipient; 
-    end_message.op_code = 1; //
 
-    //Envoi du message 
-    int send_result = msgsnd(recipient, &end_message, sizeof(simple_command_t) - sizeof(long), 0);
-    
+    // Mise à jour de la structure avec les paramètres reçus par la fonction
+    simple_command_t terminate_command;
+    terminate_command.mtype = recipient; 
+    terminate_command.message = COMMAND_CODE_TERMINATE;
 
-    //Vérification de la réussite ou non de l'envoi de la commande
-    if (send_result == -1) {
-        perror("Error sending end of list message");
-        return -1; // 
-    }
-
-    return send_result; 
+    // Envoi du message 
+    return msgsnd(msg_queue, &terminate_command, sizeof(char), 0);
 }
 
 /*!
- * @brief send_terminate_confirm sends a terminate confirmation from a child process to the requesting parent.
- * @param msg_queue is the id of the MQ used to send the message
- * @param recipient is the destination of the message
- * @return the result of msgsnd
+ * @brief send_terminate_confirm envoie une confirmation de terminaison d'un processus enfant vers le processus parent demandeur
+ * @param msg_queue est l'identifiant de la file de messages utilisée pour envoyer le message
+ * @param recipient est la destination du message
+ * @return le résultat de msgsnd
  */
 int send_terminate_confirm(int msg_queue, int recipient) {
 
-    //Vérification des paramètres
+    // Vérification des paramètres
     if (msg_queue <= 0 || recipient <= 0) {
-        printf("Error: msg_queue or recipient is NULL\n");
+        printf("Error sending message\n");
         return -1; 
     }
 
-    //Mise à jour de la stucture avec les paramètres reçus par la fonction
+    // Mise à jour de la structure avec les paramètres reçus par la fonction
     simple_command_t terminate_confirm_message;
     terminate_confirm_message.mtype = recipient;
-    terminate_confirm_message.message = 'T'; // Valeur arbitraire pour indiquer la confirmation de la terminaison
+    terminate_confirm_message.message = COMMAND_CODE_TERMINATE_OK;
 
-    //Envoi du message
-    int result = msgsnd(msg_queue, &terminate_confirm_message, sizeof(terminate_confirm_message.message), 0);
-
-    //Vérification de la réussite ou non de l'envoi du message
-    if (result == -1) {
-        perror("Error sending message");
-        return -1;
-    }
-
-    return result; 
+    // Envoi du message
+    return msgsnd(msg_queue, &terminate_confirm_message, sizeof(char), 0);
 }
