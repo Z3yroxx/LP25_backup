@@ -59,7 +59,7 @@ int send_analyze_dir_command(int msg_queue, int recipient, char *target_dir) {
   //Mise à jour de la stucture avec les paramètres reçus par la fonction
   analyze_dir_command_t cmd;
   cmd.mtype = recipient;
-  cmd.op_code = 1;
+  cmd.op_code = COMMAND_CODE_ANALYZE_DIR;
 
   //Copie des données réceptionnées dans la structure
   strncpy(cmd.target, target_dir, sizeof(cmd.target) - 1);

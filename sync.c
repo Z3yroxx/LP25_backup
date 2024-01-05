@@ -20,36 +20,39 @@
  * @param p_context is a pointer to the processes context
  */
 void synchronize(configuration_t *the_config, process_context_t *p_context) {
-  // Initialisation des listes
-  files_list_t src_list, dst_list, diff_list;
-  src_list.head = src_list.tail = NULL;
-  dst_list.head = dst_list.tail = NULL;
-  diff_list.head = diff_list.tail = NULL;
 
-  // Construction des listes de fichiers source et destination
-  make_files_list(&src_list, the_config->source);
-  make_files_list(&dst_list, the_config->destination);
+  if (the_config->is_parallel == false){
+    // Initialisation des listes
+    files_list_t src_list, dst_list, diff_list;
+    src_list.head = src_list.tail = NULL;
+    dst_list.head = dst_list.tail = NULL;
+    diff_list.head = diff_list.tail = NULL;
 
-  // Comparaison des listes pour détecter les différences
-  files_list_entry_t *src_entry = src_list.head;
-  while (src_entry != NULL) {
-      if (mismatch(src_entry, dst_list.head, the_config->uses_md5)) {
-          add_entry_to_tail(&diff_list, src_entry);
-      }
-      src_entry = src_entry->next;
+    // Construction des listes de fichiers source et destination
+    make_files_list(&src_list, the_config->source);
+    make_files_list(&dst_list, the_config->destination);
+
+    // Comparaison des listes pour détecter les différences
+    files_list_entry_t *src_entry = src_list.head;
+    while (src_entry != NULL) {
+        if (mismatch(src_entry, dst_list.head, the_config->uses_md5)) {
+            add_entry_to_tail(&diff_list, src_entry);
+        }
+        src_entry = src_entry->next;
+    }
+
+    // Copie des fichiers de la liste de différences vers la destination
+    files_list_entry_t *diff_entry = diff_list.head;
+    while (diff_entry != NULL) {
+        copy_entry_to_destination(diff_entry, the_config);
+        diff_entry = diff_entry->next;
+    }
+
+    // Nettoyage des listes de fichiers
+    clear_files_list(&src_list);
+    clear_files_list(&dst_list);
+    clear_files_list(&diff_list);
   }
-
-  // Copie des fichiers de la liste de différences vers la destination
-  files_list_entry_t *diff_entry = diff_list.head;
-  while (diff_entry != NULL) {
-      copy_entry_to_destination(diff_entry, the_config);
-      diff_entry = diff_entry->next;
-  }
-
-  // Nettoyage des listes de fichiers
-  clear_files_list(&src_list);
-  clear_files_list(&dst_list);
-  clear_files_list(&diff_list);
 }
 
 /*!
@@ -118,6 +121,37 @@ void make_files_lists_parallel(files_list_t *src_list, files_list_t *dst_list, c
   // à faire pour la partie II du projet : intégration des processus et du mode en parallèle 
 }
 
+/*void make_files_lists_parallel(files_list_t *src_list, files_list_t *dst_list, configuration_t *the_config, int msg_queue) {
+    process_context_t p_context;
+
+    // Préparer le contexte des processus
+    if (prepare(the_config, &p_context) != 0) {
+        printf("Error preparing process context\n");
+        return;
+    }
+
+    // Configurations pour les listers source et destination
+    lister_configuration_t src_lister_config, dst_lister_config;
+
+    // Remplir les configurations src_lister_config et dst_lister_config avec les détails appropriés
+
+    // Créer les processus pour lister les fichiers source et destination en parallèle
+    int src_lister_result = make_process(&p_context, &lister_process_loop, &src_lister_config);
+    int dst_lister_result = make_process(&p_context, &lister_process_loop, &dst_lister_config);
+
+    if (src_lister_result != 0 || dst_lister_result != 0) {
+        printf("Error creating lister processes\n");
+        clean_processes(the_config, &p_context); // Nettoyer les processus en cas d'erreur
+        return;
+    }
+
+    // Attendre que les processus listeurs terminent
+    // Utilisez des mécanismes de synchronisation appropriés pour attendre la fin des listers
+
+    // Nettoyer les processus
+    clean_processes(the_config, &p_context);
+}*/
+
 /*!
  * @brief copy_entry_to_destination copies a file from the source to the destination
  * It keeps access modes and mtime (@see utimensat)
@@ -125,84 +159,65 @@ void make_files_lists_parallel(files_list_t *src_list, files_list_t *dst_list, c
  * Use sendfile to copy the file, mkdir to create the directory
  */
 void copy_entry_to_destination(files_list_entry_t *source_entry, configuration_t *the_config) {
-  // Vérification des paramètres passés
-  if (source_entry == NULL || the_config == NULL) {
-      printf("Paramètres invalides\n");
-      return;
-  }
+    // Vérifie si les paramètres passés sont valides
+    if (source_entry == NULL || the_config == NULL) {
+        fprintf(stderr, "Invalid arguments to copy_entry_to_destination\n");
+        return;
+    }
 
-  // Chemin source du fichier à copier
-  const char *source_path = source_entry->path_and_name;
+    // Déclare et initialise les chemins source et destination avec les chemins du fichier source et de destination respectivement
+    char source_path[1024];
+    char dest_path[1024];
+    strcpy(source_path, the_config->source);
+    strcpy(dest_path, the_config->destination);
 
-  // Construire le chemin de destination pour le fichier
-  char destination_path[4096];
-  snprintf(destination_path, sizeof(destination_path), "%s/%s", the_config->destination, source_path + strlen(the_config->source));
+    // Vérifie si l'entrée est un dossier
+    if (source_entry->entry_type == DOSSIER){
+        char directory[PATH_SIZE];
+        // Construit le chemin du dossier à créer dans la destination
+        concat_path(directory, dest_path, source_entry->path_and_name + strlen(the_config->source) + 1);
+        // Crée le dossier avec les permissions spécifiées dans source_entry->mode
+        if (mkdir(directory, source_entry->mode) != 0) {
+            perror("Error creating directory");
+            return;
+        }
+    }
+    else { // Si l'entrée est un fichier
+        char source_file_path[PATH_SIZE];
+        char destination_file_path[PATH_SIZE];
+        // Construit les chemins complets des fichiers source et destination
+        concat_path(source_file_path, source_path, source_entry->path_and_name);
+        concat_path(destination_file_path, dest_path, source_entry->path_and_name + strlen(the_config->source) + 1);
 
-  // Trouver le dernier '/' dans le chemin source pour obtenir le répertoire parent
-  char *last_slash = strrchr(destination_path, '/');
-  if (last_slash != NULL) {
-      *last_slash = '\0'; // Mettre fin au chemin au répertoire parent
+        // Ouvre le fichier source en lecture seule
+        int source_fd = open(source_file_path, O_RDONLY);
+        if (source_fd == -1) {
+            perror("Error opening source file");
+            return;
+        }
 
-      // Vérifier si le répertoire parent existe dans la destination, sinon le créer
-      if (mkdir(destination_path, 0777) == -1 && errno != EEXIST) {
-          perror("Erreur lors de la création du répertoire parent dans la destination");
-          return;
-      }
+        // Ouvre ou crée le fichier destination avec les permissions spécifiées dans source_entry->mode
+        int dest_fd = open(destination_file_path, O_WRONLY | O_CREAT | O_TRUNC, source_entry->mode);
+        if (dest_fd == -1) {
+            perror("Error opening or creating destination file");
+            close(source_fd);
+            return;
+        }
 
-      *last_slash = '/'; // Restaurer le chemin complet
-  }
+        off_t offset = 0;
+        // Copie le contenu du fichier source vers le fichier destination en utilisant sendfile
+        off_t bytes_sent = sendfile(dest_fd, source_fd, &offset, source_entry->size);
+        if (bytes_sent == -1) {
+            perror("Error copying file");
+        }
 
-
-  // Si c'est un répertoire, rien à copier, juste à recréer la structure
-  if (source_entry->is_directory) {
-      // Création du répertoire dans la destination si nécessaire
-      if (mkdir(destination_path, 0777) != 0 && errno != EEXIST) {
-          perror("Erreur lors de la création du répertoire dans la destination");
-      }
-      return;
-  }
-
-  // Copie du fichier
-  int source_fd = open(source_path, O_RDONLY);
-  if (source_fd == -1) {
-      perror("Erreur lors de l'ouverture du fichier source");
-      return;
-  }
-
-  int destination_fd = open(destination_path, O_WRONLY | O_CREAT | O_TRUNC, 0777);
-  if (destination_fd == -1) {
-      perror("Erreur lors de l'ouverture du fichier destination");
-      close(source_fd);
-      return;
-  }
-
-  // Copie du contenu du fichier source vers le fichier destination
-  ssize_t bytes_read;
-  char buffer[4096];
-  while ((bytes_read = read(source_fd, buffer, sizeof(buffer))) > 0) {
-      ssize_t bytes_written = write(destination_fd, buffer, bytes_read);
-      if (bytes_written == -1) {
-          perror("Erreur lors de l'écriture dans le fichier destination");
-          close(source_fd);
-          close(destination_fd);
-          return;
-      }
-  }
-
-  // Fermeture des descripteurs de fichiers
-  close(source_fd);
-  close(destination_fd);
-
-  // Mise à jour des timestamps (atime et mtime) de la destination pour correspondre à ceux de la source_entry
-  struct timespec times[2];
-  times[0] = source_entry->atime; // Copie des timestamps d'accès
-  times[1] = source_entry->mtime; // Copie des timestamps de modification
-
-  if (utimensat(AT_FDCWD, destination_path, times, 0) == -1) {
-      perror("Erreur lors de la mise à jour des timestamps de la destination");
-      return;
-  }
+        // Ferme les descripteurs de fichier
+        close(source_fd);
+        close(dest_fd);
+    }
 }
+
+
 
 
 
@@ -216,13 +231,13 @@ void copy_entry_to_destination(files_list_entry_t *source_entry, configuration_t
 void make_list(files_list_t *list, const char *target) {
 
   // Vérification des paramètres passés
-  if (list == NULL || target_path == NULL) {
+  if (list == NULL || target == NULL) {
     printf("Paramètres invalides\n");
     return;
   }
 
   // Vérification de l'existence du répertoire cible
-  if (!directory_exists(target_path)) {
+  if (!directory_exists(target)) {
     return;
   }
 
