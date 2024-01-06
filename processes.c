@@ -9,6 +9,10 @@
 #include <string.h>
 #include <errno.h>
 
+// Ajout (Lorenzo) pour faire fonctionner make_process
+#include <sys/types.h>
+#include <sys/wait.h>
+
 /*!
  * @brief prepare prepares (only when parallel is enabled) the processes used for the synchronization.
  * @param the_config is a pointer to the program configuration
@@ -26,6 +30,26 @@ int prepare(configuration_t *the_config, process_context_t *p_context) {
  * @return the PID of the child process (it never returns in the child process)
  */
 int make_process(process_context_t *p_context, process_loop_t func, void *parameters) {
+    // fait par Lorenzo
+    pid_t pid = fork();
+    
+    if (pid < 0) {
+        perror("Erreur de création du processus");
+        return -1;
+    }
+
+    if (pid == 0) {
+        // Processus Fils
+        func(parameters); // Execute la fonction dans le processus fils
+        exit(EXIT_SUCCESS);
+    } else {
+        // Processus Parent
+        // Optionally, you can store the child process information in the process context
+        p_context->pid = pid;
+        waitpid(pid, NULL, 0); // Attends le processus fils
+
+        return pid;
+    }
 }
 
 /*!
