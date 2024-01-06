@@ -78,20 +78,21 @@ int compute_file_md5(files_list_entry_t *entry) {
     if (file == NULL) {
         perror("Erreur");
         return -1;
+    } else if (file != NULL){
+
+        MD5_Init(&md5Context);
+    
+        while ((bytesRead = fread(data, 1, sizeof(data), file)) != 0) {
+            MD5_Update(&md5Context, data, bytesRead);
+        }
+    
+        MD5_Final(buffer, &md5Context);
+    
+        fclose(file);
+        memcpy(entry->md5sum, buffer, MD5_DIGEST_LENGTH);
+    
+        return 0;
     }
-
-    MD5_Init(&md5Context);
-
-    while ((bytesRead = fread(data, 1, sizeof(data), file)) != 0) {
-        MD5_Update(&md5Context, data, bytesRead);
-    }
-
-    MD5_Final(buffer, &md5Context);
-
-    fclose(file);
-    memcpy(entry->md5sum, buffer, MD5_DIGEST_LENGTH);
-
-    return 0;
 }
 
 /*!
