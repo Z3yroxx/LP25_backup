@@ -24,6 +24,35 @@
  * @return 0 if all went good, -1 else
  */
 int prepare(configuration_t *the_config, process_context_t *p_context) {
+//fait par Talha
+// Vérification des paramètres
+    if (the_config == NULL || p_context == NULL) {
+        fprintf(stderr, "Invalid arguments to prepare\n");
+        return -1;
+    }
+
+    // Initialisation du contexte des processus
+    p_context->num_processes = 0;
+    p_context->pids = NULL;
+    p_context->mq = -1;  // MQ non initialisée
+
+    if (the_config->parallel_enabled) {
+        // Initialisation des ressources nécessaires pour la communication entre les processus
+        struct mq_attr mq_attributes;
+        mq_attributes.mq_flags = 0;
+        mq_attributes.mq_maxmsg = 10;  // Nombre maximum de messages dans la file
+        mq_attributes.mq_msgsize = sizeof(any_message_t);
+        mq_attributes.mq_curmsgs = 0;
+
+        // Création de la file de messages
+        p_context->mq = mq_open(the_config->mq_name, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR, &mq_attributes);
+        if (p_context->mq == -1) {
+            perror("Error creating message queue");
+            return -1;
+        }
+    }
+
+    return 0;  // Succès
 }
 
 /*!
