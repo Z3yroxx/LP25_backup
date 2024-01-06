@@ -13,6 +13,8 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
+// Ajout (Lorenzo) pour faire fonctionner clean_processes
+
 /*!
  * @brief prepare prepares (only when parallel is enabled) the processes used for the synchronization.
  * @param the_config is a pointer to the program configuration
@@ -71,9 +73,36 @@ void analyzer_process_loop(void *parameters) {
  * @param p_context is a pointer to the processes context
  */
 void clean_processes(configuration_t *the_config, process_context_t *p_context) {
-    // Do nothing if not parallel
-    // Send terminate
-    // Wait for responses
-    // Free allocated memory
-    // Free the MQ
+    // fait par Lorenzo
+    if (the_config->parallel_enabled) {
+        // Send terminate
+        for (int i = 0; i < p_context->num_processes; ++i) {
+            kill(p_context->pids[i], SIGTERM);
+        }
+
+        // Wait for responses
+        for (int i = 0; i < p_context->num_processes; ++i) {
+            int status;
+            waitpid(p_context->pids[i], &status, 0);
+            if (WIFEXITED(status)) {
+                printf("Process %d exited with status %d\n", p_context->pids[i], WEXITSTATUS(status));
+            } else if (WIFSIGNALED(status)) {
+                printf("Process %d terminated by signal %d\n", p_context->pids[i], WTERMSIG(status));
+            }
+            // Optionally, handle other termination conditions
+        }
+
+        // Free allocated memory
+        free(p_context->pids);
+
+        // Free the MQ
+        if (p_context->mq != -1) {
+            mq_close(p_context->mq);
+            mq_unlink(the_config->mq_name);
+        }
+
+        // Réinitialisation du nombre de processus à 0
+        p_context->num_processes = 0;
+    }
 }
+
