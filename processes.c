@@ -44,7 +44,6 @@ int make_process(process_context_t *p_context, process_loop_t func, void *parame
         exit(EXIT_SUCCESS);
     } else {
         // Processus Parent
-        // Optionally, you can store the child process information in the process context
         p_context->pid = pid;
         waitpid(pid, NULL, 0); // Attends le processus fils
 
