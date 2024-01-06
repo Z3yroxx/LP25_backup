@@ -89,13 +89,48 @@ int make_process(process_context_t *p_context, process_loop_t func, void *parame
  * @param parameters is a pointer to its parameters, to be cast to a lister_configuration_t
  */
 void lister_process_loop(void *parameters) {
+
+        if (parameters == NULL) {
+        fprintf(stderr, "Invalid parameters for lister_process_loop\n");
+        return;
+    }
+
+    lister_configuration_t *config = (lister_configuration_t *)parameters;
+
+    // Simulez un traitement pour le répertoire source
+    printf("Lister Process: Listing files from %s\n", config->source_dir);
+
+    // Simulez un délai d'exécution
+    sleep(2);
+
+    // Envoie un message de fin de liste à la file de messages
+    send_list_end(config->msg_queue, config->mtype);
+    
 }
+    
 
 /*!
  * @brief analyzer_process_loop is the analyzer process function
  * @param parameters is a pointer to its parameters, to be cast to an analyzer_configuration_t
  */
 void analyzer_process_loop(void *parameters) {
+
+    if (parameters == NULL) {
+        fprintf(stderr, "Parametres invalides pour analyzer_process_loop\n");
+        return;
+    }
+
+    analyzer_configuration_t *config = (analyzer_configuration_t *)parameters;
+
+    // Simulez un traitement pour analyser les différences entre les listes
+    printf("Analyzer Process: Analyse des differences entre la source et la destination\n");
+
+    // Simulez un délai d'exécution
+    sleep(2);
+
+    // Envoie un message de fin de liste à la file de messages
+    send_list_end(config->msg_queue, config->mtype);
+    
 }
 
 /*!
