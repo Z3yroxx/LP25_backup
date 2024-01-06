@@ -14,6 +14,8 @@
 #include <sys/wait.h>
 
 // Ajout (Lorenzo) pour faire fonctionner clean_processes
+#include <signal.h>
+#include <mqueue.h>
 
 /*!
  * @brief prepare prepares (only when parallel is enabled) the processes used for the synchronization.
