@@ -57,13 +57,35 @@ files_list_entry_t *add_file_entry(files_list_t *list, char *file_path) {
     new_entry->mode = file_stat.st_mode;
     memset(new_entry->md5sum, 0, sizeof(new_entry->md5sum));  // Remplir le MD5 à votre discrétion
 
-    // Ajouter l'entrée à la liste
-    if (add_entry_to_tail(list, new_entry) != 0) {
-        free(new_entry);
-        return NULL;  // Échec d'ajout à la liste
+   files_list_entry_t *prev = NULL;
+    files_list_entry_t *cursor = list->head;
+    
+    while (cursor != NULL && strcmp(cursor->path_and_name, new_entry->path_and_name) < 0) {
+        prev = cursor;
+        cursor = cursor->next;
     }
 
-    return new_entry;    
+    // Insérer l'entrée dans la liste
+    if (prev == NULL) {
+        // L'élément doit être inséré au début de la liste
+        new_entry->next = list->head;
+        new_entry->prev = NULL;
+        list->head = new_entry;
+    } else {
+        // Insérer entre prev et cursor
+        new_entry->next = cursor;
+        new_entry->prev = prev;
+        prev->next = new_entry;
+
+        if (cursor != NULL) {
+            cursor->prev = new_entry;
+        } else {
+            // L'élément doit être inséré à la fin de la liste
+            list->tail = new_entry;
+        }
+    }
+
+    return new_entry;  // Succès, retourner un pointeur vers la nouvelle entrée ajoutée
 }
 
 /*!
