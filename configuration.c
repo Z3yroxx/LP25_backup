@@ -27,6 +27,11 @@ void display_help(char *my_name) {
  * @param the_config is a pointer to the configuration to be initialized
  */
 void init_configuration(configuration_t *the_config) {
+    if (the_config == NULL) {
+        // afficher une message d'erreur
+        fprintf(stderr, "Error: Invalid configuration pointer\n");
+        exit(EXIT_FAILURE);
+    }
     strcpy(the_config->source, "src_default");
     strcpy(the_config->destination, "dst_default");
     the_config->processes_count = 1;
@@ -60,7 +65,9 @@ int set_configuration(configuration_t *the_config, int argc, char *argv[]) {
             {"dry-run", no_argument, NULL, 'd'},
             {"verbose", no_argument, NULL, 'v'},
             {NULL, 0, NULL, 0}};
-
+    
+    int non_option_args_start = optind
+    
     while ((option = getopt_long(argc, argv, short_options, long_options, NULL)) != -1) {
         switch (option) {
             case 'n':
@@ -86,7 +93,16 @@ int set_configuration(configuration_t *the_config, int argc, char *argv[]) {
                 return -1; // Option non reconnue
         }
     }
+    
+    if (optind + 1 >= argc) {
+        fprintf(stderr, "Error: Insufficient arguments for source and destination\n");
+        return -1;
+    }
 
+    for (int i = non_option_args_start; i < argc; i++) {
+        printf("Non-option argument: %s\n", argv[i]);
+    }
+    
     // Mettre à jour les champs source et destination
     strncpy(the_config->source, argv[optind], sizeof(the_config->source) - 1);
     the_config->source[sizeof(the_config->source) - 1] = '\0';
