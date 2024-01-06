@@ -75,10 +75,10 @@ int compute_file_md5(files_list_entry_t *entry) {
     MD5_CTX md5Context;
 
     file = fopen(entry->path_and_name, "rb");
-    if (file == NULL) {
+    if (file == NULL || entry == NULL) {
         perror("Erreur");
         return -1;
-    } else if (file != NULL){
+    } else {
 
         MD5_Init(&md5Context);
     
