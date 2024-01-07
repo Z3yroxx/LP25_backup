@@ -20,77 +20,67 @@
  * @param p_context is a pointer to the processes context
  */
 void synchronize(configuration_t *the_config, process_context_t *p_context) {
+    if (p_context == NULL) {
+        printf("Paramètres invalides\n");
+        exit(-1);
+    }
 
-  if (the_config->is_parallel == false){
-    // Initialisation des listes
-    files_list_t src_list, dst_list, diff_list;
-    src_list.head = src_list.tail = NULL;
-    dst_list.head = dst_list.tail = NULL;
-    diff_list.head = diff_list.tail = NULL;
+    // Initialisation des listes source et destination
+    files_list_t source, destination, difference;
+    source.head = source.tail = NULL;
+    destination.head = destination.tail = NULL;
+    difference.head = difference.tail = NULL;
 
-    // Construction des listes de fichiers source et destination
-    make_files_list(&src_list, the_config->source);
-    make_files_list(&dst_list, the_config->destination);
+    // Création des listes de fichiers en fonction du mode de synchronisation
+    if (!the_config->is_parallel) {
+        make_files_list(&source, the_config->source);
+        make_files_list(&destination, the_config->destination);
+    } else {
+        make_files_lists_parallel(&source, &destination, the_config, p_context->message_queue_id);
+    }
 
-    // Comparaison des listes pour détecter les différences
-    files_list_entry_t *src_entry = src_list.head;
-    while (src_entry != NULL) {
-        if (mismatch(src_entry, dst_list.head, the_config->uses_md5)) {
-            add_entry_to_tail(&diff_list, src_entry);
+    // Affichage des fichiers source et destination
+    display_files_list(&source);
+    display_files_list(&destination);
+
+    files_list_entry_t *tmp = source.head;
+
+    // Comparaison des fichiers source et destination
+    while (tmp != NULL) {
+        size_t start_of_src = strlen(the_config->source) + 1;
+        size_t start_of_dest = strlen(the_config->destination) + 1;
+
+        files_list_entry_t *result = find_entry_by_name(&destination, tmp->path_and_name, start_of_src, start_of_dest);
+
+        if (result == NULL || mismatch(tmp, result, the_config->uses_md5)) {
+
+            // Ajout des fichiers différents à la liste de différences
+            files_list_entry_t *tmp_copy = malloc(sizeof(files_list_entry_t));
+            if (tmp_copy == NULL) {
+                printf("Erreur d'allocation mémoire\n");
+                exit(-1);
+            }
+            memcpy(tmp_copy, tmp, sizeof(files_list_entry_t));
+            tmp_copy->next = NULL;
+            add_entry_to_tail(&difference, tmp_copy);
+        } else {
+            printf("\nLes fichiers sont identiques\n");
         }
-        src_entry = src_entry->next;
+
+        tmp = tmp->next;
     }
 
     // Copie des fichiers de la liste de différences vers la destination
-    files_list_entry_t *diff_entry = diff_list.head;
-    while (diff_entry != NULL) {
-        copy_entry_to_destination(diff_entry, the_config);
-        diff_entry = diff_entry->next;
+    files_list_entry_t *tmp_dif = difference.head;
+    while (tmp_dif != NULL) {
+        copy_entry_to_destination(tmp_dif, the_config);
+        tmp_dif = tmp_dif->next;
     }
 
     // Nettoyage des listes de fichiers
-    clear_files_list(&src_list);
-    clear_files_list(&dst_list);
-    clear_files_list(&diff_list);
-  }else {
-    // Configuration pour les listers source et destination
-    lister_configuration_t src_lister_config, dst_lister_config;
-
-    // Initialisation des configurations des listers en mode parallèle (valeur id arbitraires)
-    src_lister_config.my_recipient_id = 1; 
-    src_lister_config.my_receiver_id = 2; 
-    src_lister_config.analyzers_count = p_context->processes_count; 
-    src_lister_config.mq_key = p_context->shared_key; 
-
-    dst_lister_config.my_recipient_id = 3; 
-    dst_lister_config.my_receiver_id = 4; 
-    dst_lister_config.analyzers_count = p_context->processes_count; // Utilisation du nombre de processus défini
-    dst_lister_config.mq_key = p_context->shared_key; // Utilisation de la clé partagée
-
-    // Création des processus pour les listers source et destination en parallèle
-    int src_lister_result = make_process(&p_context, &lister_process_loop, &src_lister_config);
-    int dst_lister_result = make_process(&p_context, &lister_process_loop, &dst_lister_config);
-
-    if (src_lister_result != 0 || dst_lister_result != 0) {
-        printf("Error creating lister processes\n");
-        clean_processes(the_config, p_context); // Nettoyage des processus en cas d'erreur
-        return;
-    }
-
-    // Attendre que les processus listeurs terminent
-    int status;
-    pid_t pid;
-    while ((pid = waitpid(-1, &status, 0)) > 0) {
-        if (WIFEXITED(status)) {
-            printf("Process %d terminated with status %d\n", pid, WEXITSTATUS(status));
-        } else {
-            printf("Process %d terminated abnormally\n", pid);
-        }
-    }
-
-    // Nettoyage des processus
-    clean_processes(the_config, p_context);
-  }
+    clear_files_list(&difference);
+    clear_files_list(&source);
+    clear_files_list(&destination);
 }
 
 
@@ -111,11 +101,11 @@ bool mismatch(files_list_entry_t *lhd, files_list_entry_t *rhd, bool has_md5) {
 
   // Comparaison des attributs des fichiers
   if (lhd->size != rhd->size ||
-      lhd->mtime.tv_sec != rhd->mtime.tv_sec ||
-      lhd->mtime.tv_nsec != rhd->mtime.tv_nsec ||
-      lhd->entry_type != rhd->entry_type ||
-      lhd->mode != rhd->mode) {
-      return true;
+    lhd->mtime.tv_sec != rhd->mtime.tv_sec ||
+    lhd->mtime.tv_nsec != rhd->mtime.tv_nsec ||
+    lhd->entry_type != rhd->entry_type ||
+    lhd->mode != rhd->mode) {
+    return true;
   }
   // Vérification de la somme de contrôle MD5 si activée
   if (has_md5) {
@@ -157,89 +147,77 @@ void make_files_list(files_list_t *list, char *target_path) {
  * @param msg_queue is the id of the MQ used for communication
  */
 void make_files_lists_parallel(files_list_t *src_list, files_list_t *dst_list, configuration_t *the_config, int msg_queue) {
-  // Vérifie si les paramètres sont valides
-  if (src_list == NULL || dst_list == NULL || the_config == NULL) {
-      fprintf(stderr, "Invalid arguments\n");
-      exit(-1);
-  }
-
-  // Début du traitement pour créer les listes de fichiers en parallèle
-  printf("Making files lists in parallel\n");
-  printf("Sending analyze dir commands\n");
-  fflush(stdout);
-
-  // Envoi des commandes d'analyse de répertoire pour le source et la destination
-  send_analyze_dir_command(msg_queue, COMMAND_CODE_ANALYZE_DIR, the_config->source);
-  send_analyze_dir_command(msg_queue, COMMAND_CODE_ANALYZE_DIR, the_config->destination);
-
-  bool source_loop = true;
-  bool destination_loop = true;
-
-  any_message_t source_response, destination_response, src_end, dst_end;
-
-  // Boucle pour recevoir les réponses des analyseurs en parallèle
-  do {
-    receive_messages(msg_queue, COMMAND_CODE_FILE_ENTRY, &source_response);
-    receive_messages(msg_queue, COMMAND_CODE_FILE_ENTRY, &destination_response);
-    receive_messages(msg_queue, COMMAND_CODE_FILE_ANALYZED, &src_end);
-    receive_messages(msg_queue, COMMAND_CODE_FILE_ANALYZED, &dst_end);
-
-    // Processus pour gérer les réponses des analyseurs
-    if (source_response.list_entry.op_code == COMMAND_CODE_ANALYZE_FILE) {
-      // Si c'est une réponse à l'analyse de fichier source, l'ajouter à src_list
-      files_list_entry_t *tmp_copy = malloc(sizeof(files_list_entry_t));
-      if (tmp_copy == NULL) {
-        fprintf(stderr, "Failed to allocate memory for tmp_copy\n");
+    // Vérifie si les paramètres sont valides
+    if (src_list == NULL || dst_list == NULL || the_config == NULL) {
+        printf("Paramètres invalides\n");
         exit(-1);
-      }
-      memcpy(tmp_copy, &source_response.list_entry.payload, sizeof(files_list_entry_t));
-      add_entry_to_tail(src_list, tmp_copy);
     }
 
-    if (destination_response.list_entry.op_code == COMMAND_CODE_ANALYZE_FILE) {
-      // Si c'est une réponse à l'analyse de fichier destination, l'ajouter à dst_list
-      files_list_entry_t *tmp_copy = malloc(sizeof(files_list_entry_t));
-      if (tmp_copy == NULL) {
-        fprintf(stderr, "Failed to allocate memory for tmp_copy\n");
+    fflush(stdout);
+
+    // Envoi des commandes d'analyse de répertoire pour le source et la destination
+    send_analyze_dir_command(msg_queue, COMMAND_CODE_ANALYZE_DIR, the_config->source);
+    send_analyze_dir_command(msg_queue, COMMAND_CODE_ANALYZE_DIR, the_config->destination);
+
+    bool source_loop = true;
+    bool destination_loop = true;
+
+    any_message_t source_response, destination_response, src_end, dst_end;
+
+    // Boucle pour recevoir les réponses des analyseurs en parallèle
+    do {
+        receive_messages(msg_queue, COMMAND_CODE_FILE_ENTRY, &source_response);
+        receive_messages(msg_queue, COMMAND_CODE_FILE_ENTRY, &destination_response);
+        receive_messages(msg_queue, COMMAND_CODE_FILE_ANALYZED, &src_end);
+        receive_messages(msg_queue, COMMAND_CODE_FILE_ANALYZED, &dst_end);
+
+        // Processus pour gérer les réponses des analyseurs
+        if (source_response.list_entry.op_code == COMMAND_CODE_ANALYZE_FILE) {
+            // Si c'est une réponse à l'analyse de fichier source, l'ajouter à src_list
+            files_list_entry_t *tmp_copy = malloc(sizeof(files_list_entry_t));
+            if (tmp_copy == NULL) {
+                printf("Erreur d'allocation mémoire\n");
+                exit(-1);
+            }
+            memcpy(tmp_copy, &source_response.list_entry.payload, sizeof(files_list_entry_t));
+            add_entry_to_tail(src_list, tmp_copy);
+        }
+
+        if (destination_response.list_entry.op_code == COMMAND_CODE_ANALYZE_FILE) {
+            // Si c'est une réponse à l'analyse de fichier destination, l'ajouter à dst_list
+            files_list_entry_t *tmp_copy = malloc(sizeof(files_list_entry_t));
+            if (tmp_copy == NULL) {
+                printf("Erreur d'allocation mémoire\n");
+                exit(-1);
+            }
+            memcpy(tmp_copy, &destination_response.list_entry.payload, sizeof(files_list_entry_t));
+            add_entry_to_tail(dst_list, tmp_copy);
+        }
+
+        if (src_end.simple_command.message == COMMAND_CODE_LIST_COMPLETE) {
+            printf("Fin_source\n");
+            source_loop = false;
+        }
+
+        if (dst_end.simple_command.message == COMMAND_CODE_LIST_COMPLETE) {
+            printf("Fin_destination\n");
+            destination_loop = false;
+        }
+
+    } while (source_loop || destination_loop);
+
+    // Envoi de la confirmation de terminaison
+    int result = send_terminate_confirm(msg_queue, COMMAND_CODE_TERMINATE_OK);
+    if (result == -1) {
+        fprintf(stderr, "Erreur dans l'envoi du message de terminaison\n");
         exit(-1);
-      }
-      memcpy(tmp_copy, &destination_response.list_entry.payload, sizeof(files_list_entry_t));
-      add_entry_to_tail(dst_list, tmp_copy);
     }
-
-    if (src_end.simple_command.message == COMMAND_CODE_LIST_COMPLETE) {
-      printf("Source end\n");
-      source_loop = false;
-    }
-
-    if (dst_end.simple_command.message == COMMAND_CODE_LIST_COMPLETE) {
-      printf("Destination end\n");
-      destination_loop = false;
-    }
-
-  } while (source_loop || destination_loop);
-
-  // Envoi de la confirmation de terminaison
-  int result = send_terminate_confirm(msg_queue, COMMAND_CODE_TERMINATE_OK);
-  if (result == -1) {
-    fprintf(stderr, "Error sending termination confirmation\n");
-    exit(-1);
-  }
 }
 
-
-
-
-/*!
- * @brief copy_entry_to_destination copies a file from the source to the destination
- * It keeps access modes and mtime (@see utimensat)
- * Pay attention to the path so that the prefixes are not repeated from the source to the destination
- * Use sendfile to copy the file, mkdir to create the directory
- */
 void copy_entry_to_destination(files_list_entry_t *source_entry, configuration_t *the_config) {
     // Vérifie si les paramètres passés sont valides
     if (source_entry == NULL || the_config == NULL) {
-        fprintf(stderr, "Invalid arguments to copy_entry_to_destination\n");
+        printf("Paramètres invalides\n");
         return;
     }
 
@@ -256,7 +234,7 @@ void copy_entry_to_destination(files_list_entry_t *source_entry, configuration_t
         concat_path(directory, dest_path, source_entry->path_and_name + strlen(the_config->source) + 1);
         // Crée le dossier avec les permissions spécifiées dans source_entry->mode
         if (mkdir(directory, source_entry->mode) != 0) {
-            perror("Error creating directory");
+            perror("Erreur dans la création du dossier");
             return;
         }
     }
@@ -270,14 +248,14 @@ void copy_entry_to_destination(files_list_entry_t *source_entry, configuration_t
         // Ouvre le fichier source en lecture seule
         int source_fd = open(source_file_path, O_RDONLY);
         if (source_fd == -1) {
-            perror("Error opening source file");
+            perror("Erreur dans l'ouverture du fichier");
             return;
         }
 
         // Ouvre ou crée le fichier destination avec les permissions spécifiées dans source_entry->mode
         int dest_fd = open(destination_file_path, O_WRONLY | O_CREAT | O_TRUNC, source_entry->mode);
         if (dest_fd == -1) {
-            perror("Error opening or creating destination file");
+            perror("Erreur dans l'ouverture ou dans la création du fichier");
             close(source_fd);
             return;
         }
@@ -286,7 +264,7 @@ void copy_entry_to_destination(files_list_entry_t *source_entry, configuration_t
         // Copie le contenu du fichier source vers le fichier destination en utilisant sendfile
         off_t bytes_sent = sendfile(dest_fd, source_fd, &offset, source_entry->size);
         if (bytes_sent == -1) {
-            perror("Error copying file");
+            perror("Erreur dans la copie du fichier");
         }
 
         // Ferme les descripteurs de fichier
@@ -294,8 +272,6 @@ void copy_entry_to_destination(files_list_entry_t *source_entry, configuration_t
         close(dest_fd);
     }
 }
-
-
 
 
 
