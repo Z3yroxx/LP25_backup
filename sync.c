@@ -52,8 +52,47 @@ void synchronize(configuration_t *the_config, process_context_t *p_context) {
     clear_files_list(&src_list);
     clear_files_list(&dst_list);
     clear_files_list(&diff_list);
+  }else {
+    // Configuration pour les listers source et destination
+    lister_configuration_t src_lister_config, dst_lister_config;
+
+    // Initialisation des configurations des listers en mode parallèle (valeur id arbitraires)
+    src_lister_config.my_recipient_id = 1; 
+    src_lister_config.my_receiver_id = 2; 
+    src_lister_config.analyzers_count = p_context->processes_count; 
+    src_lister_config.mq_key = p_context->shared_key; 
+
+    dst_lister_config.my_recipient_id = 3; 
+    dst_lister_config.my_receiver_id = 4; 
+    dst_lister_config.analyzers_count = p_context->processes_count; // Utilisation du nombre de processus défini
+    dst_lister_config.mq_key = p_context->shared_key; // Utilisation de la clé partagée
+
+    // Création des processus pour les listers source et destination en parallèle
+    int src_lister_result = make_process(&p_context, &lister_process_loop, &src_lister_config);
+    int dst_lister_result = make_process(&p_context, &lister_process_loop, &dst_lister_config);
+
+    if (src_lister_result != 0 || dst_lister_result != 0) {
+        printf("Error creating lister processes\n");
+        clean_processes(the_config, p_context); // Nettoyage des processus en cas d'erreur
+        return;
+    }
+
+    // Attendre que les processus listeurs terminent
+    int status;
+    pid_t pid;
+    while ((pid = waitpid(-1, &status, 0)) > 0) {
+        if (WIFEXITED(status)) {
+            printf("Process %d terminated with status %d\n", pid, WEXITSTATUS(status));
+        } else {
+            printf("Process %d terminated abnormally\n", pid);
+        }
+    }
+
+    // Nettoyage des processus
+    clean_processes(the_config, p_context);
   }
 }
+
 
 /*!
  * @brief mismatch tests if two files with the same name (one in source, one in destination) are equal
@@ -118,39 +157,78 @@ void make_files_list(files_list_t *list, char *target_path) {
  * @param msg_queue is the id of the MQ used for communication
  */
 void make_files_lists_parallel(files_list_t *src_list, files_list_t *dst_list, configuration_t *the_config, int msg_queue) {
-  // à faire pour la partie II du projet : intégration des processus et du mode en parallèle 
+  // Vérifie si les paramètres sont valides
+  if (src_list == NULL || dst_list == NULL || the_config == NULL) {
+      fprintf(stderr, "Invalid arguments\n");
+      exit(-1);
+  }
+
+  // Début du traitement pour créer les listes de fichiers en parallèle
+  printf("Making files lists in parallel\n");
+  printf("Sending analyze dir commands\n");
+  fflush(stdout);
+
+  // Envoi des commandes d'analyse de répertoire pour le source et la destination
+  send_analyze_dir_command(msg_queue, COMMAND_CODE_ANALYZE_DIR, the_config->source);
+  send_analyze_dir_command(msg_queue, COMMAND_CODE_ANALYZE_DIR, the_config->destination);
+
+  bool source_loop = true;
+  bool destination_loop = true;
+
+  any_message_t source_response, destination_response, src_end, dst_end;
+
+  // Boucle pour recevoir les réponses des analyseurs en parallèle
+  do {
+    receive_messages(msg_queue, COMMAND_CODE_FILE_ENTRY, &source_response);
+    receive_messages(msg_queue, COMMAND_CODE_FILE_ENTRY, &destination_response);
+    receive_messages(msg_queue, COMMAND_CODE_FILE_ANALYZED, &src_end);
+    receive_messages(msg_queue, COMMAND_CODE_FILE_ANALYZED, &dst_end);
+
+    // Processus pour gérer les réponses des analyseurs
+    if (source_response.list_entry.op_code == COMMAND_CODE_ANALYZE_FILE) {
+      // Si c'est une réponse à l'analyse de fichier source, l'ajouter à src_list
+      files_list_entry_t *tmp_copy = malloc(sizeof(files_list_entry_t));
+      if (tmp_copy == NULL) {
+        fprintf(stderr, "Failed to allocate memory for tmp_copy\n");
+        exit(-1);
+      }
+      memcpy(tmp_copy, &source_response.list_entry.payload, sizeof(files_list_entry_t));
+      add_entry_to_tail(src_list, tmp_copy);
+    }
+
+    if (destination_response.list_entry.op_code == COMMAND_CODE_ANALYZE_FILE) {
+      // Si c'est une réponse à l'analyse de fichier destination, l'ajouter à dst_list
+      files_list_entry_t *tmp_copy = malloc(sizeof(files_list_entry_t));
+      if (tmp_copy == NULL) {
+        fprintf(stderr, "Failed to allocate memory for tmp_copy\n");
+        exit(-1);
+      }
+      memcpy(tmp_copy, &destination_response.list_entry.payload, sizeof(files_list_entry_t));
+      add_entry_to_tail(dst_list, tmp_copy);
+    }
+
+    if (src_end.simple_command.message == COMMAND_CODE_LIST_COMPLETE) {
+      printf("Source end\n");
+      source_loop = false;
+    }
+
+    if (dst_end.simple_command.message == COMMAND_CODE_LIST_COMPLETE) {
+      printf("Destination end\n");
+      destination_loop = false;
+    }
+
+  } while (source_loop || destination_loop);
+
+  // Envoi de la confirmation de terminaison
+  int result = send_terminate_confirm(msg_queue, COMMAND_CODE_TERMINATE_OK);
+  if (result == -1) {
+    fprintf(stderr, "Error sending termination confirmation\n");
+    exit(-1);
+  }
 }
 
-/*void make_files_lists_parallel(files_list_t *src_list, files_list_t *dst_list, configuration_t *the_config, int msg_queue) {
-    process_context_t p_context;
 
-    // Préparer le contexte des processus
-    if (prepare(the_config, &p_context) != 0) {
-        printf("Error preparing process context\n");
-        return;
-    }
 
-    // Configurations pour les listers source et destination
-    lister_configuration_t src_lister_config, dst_lister_config;
-
-    // Remplir les configurations src_lister_config et dst_lister_config avec les détails appropriés
-
-    // Créer les processus pour lister les fichiers source et destination en parallèle
-    int src_lister_result = make_process(&p_context, &lister_process_loop, &src_lister_config);
-    int dst_lister_result = make_process(&p_context, &lister_process_loop, &dst_lister_config);
-
-    if (src_lister_result != 0 || dst_lister_result != 0) {
-        printf("Error creating lister processes\n");
-        clean_processes(the_config, &p_context); // Nettoyer les processus en cas d'erreur
-        return;
-    }
-
-    // Attendre que les processus listeurs terminent
-    // Utilisez des mécanismes de synchronisation appropriés pour attendre la fin des listers
-
-    // Nettoyer les processus
-    clean_processes(the_config, &p_context);
-}*/
 
 /*!
  * @brief copy_entry_to_destination copies a file from the source to the destination

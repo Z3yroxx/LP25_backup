@@ -24,7 +24,7 @@ int send_file_entry(int msg_queue, int recipient, files_list_entry_t *file_entry
   //Mise à jour de la stucture avec les paramètres reçus par la fonction
   any_message_t msg;
   msg.list_entry.mtype = recipient;
-  msg.list_entry.op_code = cmd_code;
+  msg.list_entry.op_code = COMMAND_CODE_FILE;
 
   //Copie des données réceptionnées dans la structure
   memcpy(&msg.list_entry.payload, file_entry, sizeof(files_list_entry_t));
