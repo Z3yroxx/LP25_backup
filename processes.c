@@ -141,12 +141,12 @@ void analyzer_process_loop(void *parameters) {
 void clean_processes(configuration_t *the_config, process_context_t *p_context) {
     // fait par Lorenzo
     if (the_config->parallel_enabled) {
-        // Send terminate
+       
         for (int i = 0; i < p_context->num_processes; ++i) {
             kill(p_context->pids[i], SIGTERM);
         }
 
-        // Wait for responses
+        // attendre les réponses
         for (int i = 0; i < p_context->num_processes; ++i) {
             int status;
             waitpid(p_context->pids[i], &status, 0);
@@ -155,10 +155,10 @@ void clean_processes(configuration_t *the_config, process_context_t *p_context) 
             } else if (WIFSIGNALED(status)) {
                 printf("Process %d terminated by signal %d\n", p_context->pids[i], WTERMSIG(status));
             }
-            // Optionally, handle other termination conditions
+            
         }
 
-        // Free allocated memory
+        // libéret la memoire allouée
         free(p_context->pids);
 
         // Free the MQ
